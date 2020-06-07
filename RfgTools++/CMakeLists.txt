@@ -16,6 +16,7 @@ add_library(RfgTools++ STATIC ${SOURCES})
 # Add include directories
 target_include_directories(RfgTools++ SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/Common/
+    ${CMAKE_SOURCE_DIR}/Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
 )
 
 target_link_libraries(RfgTools++ PRIVATE Common)

@@ -1,0 +1,3 @@
+[submodule "Dependencies/BinaryTools"]
+	path = Dependencies/BinaryTools
+	url = https://github.com/Moneyl/BinaryTools.git
