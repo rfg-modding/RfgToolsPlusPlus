@@ -1,3 +1,6 @@
 [submodule "Dependencies/BinaryTools"]
 	path = Dependencies/BinaryTools
 	url = https://github.com/Moneyl/BinaryTools.git
+[submodule "Dependencies/zlib"]
+	path = Dependencies/zlib
+	url = https://github.com/madler/zlib.git
