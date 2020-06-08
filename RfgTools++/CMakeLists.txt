@@ -8,6 +8,9 @@ project (RfgTools++ VERSION 1.0.0
 # Places in SOURCES variable
 file(GLOB_RECURSE SOURCES 
     ${CMAKE_SOURCE_DIR}/RfgTools++/RfgTools++/*.cpp
+    # TODO: Hook this up as a static lib once it's got a CMakeLists.txt. For now this works
+    ${CMAKE_SOURCE_DIR}/Dependencies/BinaryTools/*.h
+    ${CMAKE_SOURCE_DIR}//Dependencies/BinaryTools/*.cpp
 )
 
 # Add source to this project's static library (.lib)
