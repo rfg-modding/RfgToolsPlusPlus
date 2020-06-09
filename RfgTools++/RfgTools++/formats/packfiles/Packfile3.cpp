@@ -101,21 +101,29 @@ void Packfile3::ExtractCompressed(const string& outputPath, BinaryReader& reader
 
 void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader)
 {
-    //Simple implementation that reads each subfile in and writes them out
+    //Implementation that reads whole data block in at once and writes with multiple threads
+    u8* buffer = new u8[Header.DataSize];
+    reader.SeekBeg(dataBlockOffset_);
+    reader.ReadToMemory(buffer, Header.DataSize);
+
+    std::vector<std::future<void>> futures;
+    futures.reserve(Header.NumberOfSubfiles);
+
     u32 index = 0;
     for (const auto& entry : Entries)
     {
-        //Todo: Add option to load into one big buffer and parse that or use vector<u8> to attempt to reduce allocations
-        //Read file data into buffer and write to separate file
-        u8* buffer = new u8[entry.DataSize];
-        reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
-        reader.ReadToMemory(buffer, entry.DataSize);
-        File::WriteToFile(outputPath + EntryNames[index], {buffer, entry.DataSize});
-
-        //Delete buffer after use
-        delete[] buffer;
+        u8* dataStart = buffer + entry.DataOffset;
+        futures.push_back(std::async(std::launch::async, &File::WriteToFile, outputPath + EntryNames[index], std::span<u8>{ dataStart, entry.DataSize }));
         index++;
     }
+
+    for (const auto& future : futures)
+    {
+        future.wait();
+    }
+
+    //Delete buffer after use
+    delete[] buffer;
 }
 
 void Packfile3::WriteStreamsFile(const string& outputPath)
