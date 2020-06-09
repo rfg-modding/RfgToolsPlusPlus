@@ -101,21 +101,21 @@ void Packfile3::ExtractCompressed(const string& outputPath, BinaryReader& reader
 
 void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader)
 {
-    //Simple implementation that reads each subfile in and writes them out
+    //Implementation that reads whole data block in at once
+    u8* buffer = new u8[Header.DataSize];
+    reader.SeekBeg(dataBlockOffset_);
+    reader.ReadToMemory(buffer, Header.DataSize);
+
     u32 index = 0;
     for (const auto& entry : Entries)
     {
-        //Todo: Add option to load into one big buffer and parse that or use vector<u8> to attempt to reduce allocations
-        //Read file data into buffer and write to separate file
-        u8* buffer = new u8[entry.DataSize];
-        reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
-        reader.ReadToMemory(buffer, entry.DataSize);
-        File::WriteToFile(outputPath + EntryNames[index], {buffer, entry.DataSize});
-
-        //Delete buffer after use
-        delete[] buffer;
+        u8* dataStart = buffer + entry.DataOffset;
+        File::WriteToFile(outputPath + EntryNames[index], { dataStart, entry.DataSize });
         index++;
     }
+
+    //Delete buffer after use
+    delete[] buffer;
 }
 
 void Packfile3::WriteStreamsFile(const string& outputPath)
