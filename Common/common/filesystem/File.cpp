@@ -32,4 +32,10 @@ namespace File
 
         return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
     }
+
+    void WriteToFile(const string& path, std::span<u8> data)
+    {
+        std::ofstream stream(path, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+        stream.write(reinterpret_cast<const char*>(data.data()), data.size_bytes());
+    }
 }

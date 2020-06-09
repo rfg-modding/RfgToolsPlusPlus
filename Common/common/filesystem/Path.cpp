@@ -15,6 +15,19 @@ namespace Path
         return std::filesystem::path(FullPath).filename().string();
     }
 
+    string GetFileNameNoExtension(const std::filesystem::path& FullPath)
+    {
+        return GetFileName(FullPath.string());
+    }
+
+    string GetFileNameNoExtension(const string& FullPath)
+    {
+        if (!std::filesystem::path(FullPath).has_filename())
+            return {};
+
+        return std::filesystem::path(FullPath).filename().replace_extension("").string();
+    }
+
     string GetParentDirectory(const std::filesystem::path& FullPath)
     {
         return GetParentDirectory(FullPath.string());

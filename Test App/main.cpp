@@ -1,11 +1,12 @@
 #include "common/Typedefs.h"
 #include "Common/timing/Timer.h"
+#include "Common/filesystem/Path.h"
 #include "RfgTools++/formats/packfiles/Packfile3.h"
 #include <iostream>
 
 int main()
 {
-    string inputPath = "G:/RFG Unpack/data/misc.vpp_pc";
+    string inputPath = "G:/RFG Unpack/data/missions.vpp_pc";
     string outputPath = "G:/RFG Unpack 2/CppToolOutput/Unpack/";
 
     std::cout << "inputPath: \"" << inputPath << "\"\n";
@@ -22,6 +23,7 @@ int main()
     {
         Packfile3 packfile(inputPath);
         packfile.ReadMetadata();
+        packfile.ExtractSubfiles(outputPath + Path::GetFileNameNoExtension(inputPath) + "/");
         times.push_back(timer.ElapsedMicroseconds());
         timer.Reset();
     }
@@ -30,7 +32,7 @@ int main()
     for (auto& val : times)
         sum += (f32)val;
 
-    std::cout << "Elapsed time (average over " << numRuns << " runs): " << sum / (f32)numRuns << "us\n";
+    std::cout << "Elapsed time (average over " << numRuns << " runs): " << sum / (f32)numRuns << "us | " << sum / (f32)numRuns / 1000.0f << "ms | " << sum / (f32)numRuns / 1000000.0f << "s\n";
 
     return 0;
 }
