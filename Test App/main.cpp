@@ -12,7 +12,7 @@ int main()
     std::cout << "inputPath: \"" << inputPath << "\"\n";
     std::cout << "outputPath: \"" << outputPath << "\"\n";
 
-    u32 numRuns = 100;
+    u32 numRuns = 5; //Should use higher number for more precise results. Need speed for testing though
     std::vector<u64> times;
     times.reserve(numRuns);
 

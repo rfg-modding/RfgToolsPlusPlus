@@ -43,11 +43,11 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     
     //Make array of pointers to each string for easy access. Actual string data is still held in single heap buffer
     //Note: Tested using std::string and it took about twice as long due to copying + more allocating. Keep in mind if ever want to switch this to use std::string
-    EntryNames.push_back((const char*)filenamesBuffer_);
+    EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_));
     for (int i = 0; i < Header.NameBlockSize - 1; i++)
     {
         if (filenamesBuffer_[i] == '\0')
-            EntryNames.push_back((const char*)filenamesBuffer_ + i + 1);
+            EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_) + i + 1);
     }
 
     dataBlockOffset_ = reader->Position();
