@@ -1,22 +1,23 @@
 #include "common/Typedefs.h"
 #include "Common/timing/Timer.h"
 #include "Common/filesystem/Path.h"
+#include "Common/filesystem/File.h"
 #include "RfgTools++/formats/packfiles/Packfile3.h"
 #include <iostream>
 
 int main()
 {
-    string inputPath = "G:/RFG Unpack/data/missions.vpp_pc";
+    string inputPath = "G:/RFG Unpack/data/misc.vpp_pc";
     string outputPath = "G:/RFG Unpack 2/CppToolOutput/Unpack/";
 
     std::cout << "inputPath: \"" << inputPath << "\"\n";
     std::cout << "outputPath: \"" << outputPath << "\"\n";
 
-    u32 numRuns = 5; //Should use higher number for more precise results. Need speed for testing though
+    u32 numRuns = 1; //Should use higher number for more precise results. Need speed for testing though
     std::vector<u64> times;
     times.reserve(numRuns);
 
-    printf("Parsing packfile metadata...\n");
+    printf("Extracting packfile %d times...\n", numRuns);
     Timer timer(true);
 
     for (u32 i = 0; i < numRuns; i++)
@@ -24,6 +25,9 @@ int main()
         Packfile3 packfile(inputPath);
         packfile.ReadMetadata();
         packfile.ExtractSubfiles(outputPath + Path::GetFileNameNoExtension(inputPath) + "/");
+        //auto weaponsXtbl = packfile.ExtractSingleFile("weapons.xtbl");
+        //File::WriteToFile("G:\\RFG Unpack\\boop.xml", weaponsXtbl.value());
+        //delete[] weaponsXtbl.value().data();
         times.push_back(timer.ElapsedMicroseconds());
         timer.Reset();
     }

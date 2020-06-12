@@ -5,9 +5,11 @@
 #include "Packfile3Entry.h"
 #include <vector>
 #include <span>
+#include <optional>
 
 #define PACKFILE_FLAG_COMPRESSED 1
 #define PACKFILE_FLAG_CONDENSED 2
+#define INVALID_HANDLE 0xFFFFFFFF
 
 class BinaryReader;
 
@@ -19,6 +21,11 @@ public:
 
     void ReadMetadata(BinaryReader* reader = nullptr);
     void ExtractSubfiles(const string& outputPath);
+    bool CanExtractSingleFile() const;
+    //Attempts to extract a subfiles data as a raw byte array. User must free memory once they're done with it
+    //Handles decompressing compressed subfiles. Currently does not work on packfiles with both the compressed & condensed flags
+    std::optional<std::span<u8>> ExtractSingleFile(s_view name);
+    bool Contains(s_view subfileName);
 
     Packfile3Header Header;
     bool Compressed = false;
@@ -35,6 +42,7 @@ public:
     u64 MaxSingleReadDataExtractSizeBytes = 300000000;
 
 private:
+    bool Contains(s_view subfileName, u32& index);
     void ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader);
     void ExtractCompressed(const string& outputPath, BinaryReader& reader);
     void ExtractDefault(const string& outputPath, BinaryReader& reader);

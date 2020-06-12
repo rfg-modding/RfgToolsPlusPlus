@@ -1,10 +1,10 @@
 #include "Packfile3.h"
 #include "common/filesystem/Path.h"
 #include "common/filesystem/File.h"
+#include "common/string/String.h"
 #include "common/concurrency/Parallel.h"
+#include "compression/Compression.h"
 #include <BinaryTools/BinaryReader.h>
-//Todo: Currently have manually placed copy of zconf.h in here because of zlib cmake scripts renaming it. Need to automate that fix
-#include <zlib.h>
 #include <iostream>
 #include <future>
 
@@ -73,6 +73,7 @@ void Packfile3::ExtractSubfiles(const string& outputPath)
     //Todo: Look into having multiple sub-options that can be chosen. Should test to see if they're worthwhile. Ex:
     //Todo:     - Multithreaded extraction
     //Todo:     - Load entire data block into memory at once for speed when enough ram
+    //Todo:     - For very large files add an option to stream in data to reduce memory usage
     //Extract data to files. Pick method based on flags
     if (Compressed && Condensed)
         ExtractCompressedAndCondensed(outputPath, *reader);
@@ -90,22 +91,57 @@ void Packfile3::ExtractSubfiles(const string& outputPath)
 
 void Packfile3::ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader)
 {
-    //Todo: Support streaming in data section for C&C instead of loading all at once
+    //Todo: Support streaming in data section for C&C instead of loading all at once. Some users don't have enough ram for the larger files to be extracted this way
+    //Currently reads compressed data into one huge buffer and inflates, then writes out
 
+    //Read all compressed data into buffer and inflate it
+    u8* inputBuffer = new u8[Header.CompressedDataSize];
+    u8* outputBuffer = new u8[Header.DataSize];
+    reader.ReadToMemory(inputBuffer, Header.CompressedDataSize);
+    Compression::Inflate({ inputBuffer, Header.CompressedDataSize }, { outputBuffer, Header.DataSize });
+
+    //Write each subfile to disk
+    u32 index = 0;
+    for (const auto& entry : Entries)
+    {
+        File::WriteToFile(outputPath + EntryNames[index], { outputBuffer + entry.DataOffset, entry.DataSize });
+        index++;
+    }
+
+    //Delete buffers after use
+    delete[] inputBuffer;
+    delete[] outputBuffer;
 }
 
 void Packfile3::ExtractCompressed(const string& outputPath, BinaryReader& reader)
 {
+    //Simple implementation that reads each subfile in from packfile, inflates data, and writes them out
+    u32 index = 0;
+    for (const auto& entry : Entries)
+    {
+        //Read file data into buffer and write to separate file
+        u8* inputBuffer = new u8[entry.CompressedDataSize];
+        reader.ReadToMemory(inputBuffer, entry.CompressedDataSize);
+        reader.Align(2048); //Compressed offset not stored in packfile. Just read data and align to next block
 
+        //Create buffer for decompressed data and inflate, then write to file
+        u8* outputBuffer = new u8[entry.DataSize];
+        Compression::Inflate({ inputBuffer, entry.CompressedDataSize }, { outputBuffer, entry.DataSize });
+        File::WriteToFile(outputPath + EntryNames[index], { outputBuffer, entry.DataSize });
+
+        //Delete buffers after use
+        delete[] inputBuffer;
+        delete[] outputBuffer;
+        index++;
+    }
 }
 
 void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader)
 {
-    //Simple implementation that reads each subfile in and writes them out
+    //Simple implementation that reads each subfile in from packfile and writes them out
     u32 index = 0;
     for (const auto& entry : Entries)
     {
-        //Todo: Add option to load into one big buffer and parse that or use vector<u8> to attempt to reduce allocations
         //Read file data into buffer and write to separate file
         u8* buffer = new u8[entry.DataSize];
         reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
@@ -121,4 +157,74 @@ void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader)
 void Packfile3::WriteStreamsFile(const string& outputPath)
 {
     
+}
+
+bool Packfile3::CanExtractSingleFile() const
+{
+    return !(Compressed && Condensed);
+}
+
+std::optional<std::span<u8>> Packfile3::ExtractSingleFile(s_view name)
+{
+    //Todo: Add single file extraction support for C&C packfiles
+
+    //Check if single file extract is supported and the subfile exists
+    u32 targetIndex = INVALID_HANDLE;
+    if (!CanExtractSingleFile() || !Contains(name, targetIndex))
+        return {};
+
+    //Open packfile for reading
+    BinaryReader reader(path_);
+    Packfile3Entry& entry = Entries[targetIndex];
+
+    if (Compressed)
+    {
+        //Compressed offset for entries isn't stored. Calculate by running through previous entries
+        reader.SeekBeg(dataBlockOffset_);
+        for (u32 i = 0; i < targetIndex; i++)
+        {
+            reader.Skip(Entries[i].CompressedDataSize);
+            reader.Align(2048);
+        }
+
+        //Read compressed data to inputBuffer
+        u8* inputBuffer = new u8[entry.CompressedDataSize];
+        reader.ReadToMemory(inputBuffer, entry.CompressedDataSize);
+
+        //Decompress/inflate data into outputBuffer
+        u8* outputBuffer = new u8[entry.DataSize];
+        Compression::Inflate({ inputBuffer, entry.CompressedDataSize }, { outputBuffer, entry.DataSize });
+
+        //Delete inputBuffer and return outputBuffer filled with inflated data
+        delete[] inputBuffer;
+        return std::span<u8>{ outputBuffer, entry.DataSize };
+    }
+    else
+    {
+        //Read data into buffer and return it
+        u8* buffer = new u8[entry.DataSize];
+        reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
+        reader.ReadToMemory(buffer, entry.DataSize);
+        return std::span<u8>{ buffer, entry.DataSize };
+    }
+}
+
+bool Packfile3::Contains(s_view subfileName)
+{
+    u32 index = 0;
+    return Contains(subfileName, index);
+}
+
+bool Packfile3::Contains(s_view subfileName, u32& index)
+{
+    for (u32 i = 0; i < Entries.size(); i++)
+    {
+        if (EntryNames[i] == subfileName)
+        {
+            index = i;
+            return true;
+        }
+    }
+
+    return false;
 }

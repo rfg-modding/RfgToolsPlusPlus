@@ -20,6 +20,7 @@ target_include_directories(TestApp SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/Test App/
     ${CMAKE_SOURCE_DIR}/Common/
     ${CMAKE_SOURCE_DIR}/RfgTools++/
+    ${CMAKE_SOURCE_DIR}/RfgTools++/RfgTools++/
     ${CMAKE_SOURCE_DIR}/Dependencies/zlib/
     ${CMAKE_SOURCE_DIR}/Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
 )
