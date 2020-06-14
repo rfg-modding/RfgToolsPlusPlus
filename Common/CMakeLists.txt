@@ -7,7 +7,7 @@ project (Common VERSION 1.0.0
 # Get list of source files in project src folders recursively
 # Places in SOURCES variable
 file(GLOB_RECURSE SOURCES 
-    ${CMAKE_SOURCE_DIR}/Common/common/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/*.cpp
 )
 
 # Add source to this project's static library (.lib)
@@ -15,6 +15,6 @@ add_library(Common STATIC ${SOURCES})
 
 # Add include directories
 target_include_directories(Common SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/Common/
-    ${CMAKE_SOURCE_DIR}/Common/
+    ${CMAKE_CURRENT_SOURCE_DIR}/
+    ${CMAKE_CURRENT_SOURCE_DIR}/
 )

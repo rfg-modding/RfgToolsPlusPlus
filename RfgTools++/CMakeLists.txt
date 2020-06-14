@@ -7,22 +7,25 @@ project (RfgTools++ VERSION 1.0.0
 # Get list of source files in project src folders recursively
 # Places in SOURCES variable
 file(GLOB_RECURSE SOURCES 
-    ${CMAKE_SOURCE_DIR}/RfgTools++/RfgTools++/*.h
-    ${CMAKE_SOURCE_DIR}/RfgTools++/RfgTools++/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/RfgTools++/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/RfgTools++/*.cpp
     # TODO: Hook this up as a static lib once it's got a CMakeLists.txt. For now this works
-    ${CMAKE_SOURCE_DIR}/Dependencies/BinaryTools/*.h
-    ${CMAKE_SOURCE_DIR}/Dependencies/BinaryTools/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/*.cpp
 )
 
 # Add source to this project's static library (.lib)
 add_library(RfgTools++ STATIC ${SOURCES})
 
+message(${CMAKE_CURRENT_SOURCE_DIR})
+
 # Add include directories
 target_include_directories(RfgTools++ SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/Common/
-    ${CMAKE_SOURCE_DIR}/RfgTools++/RfgTools++/
-    ${CMAKE_SOURCE_DIR}/Dependencies/zlib/
-    ${CMAKE_SOURCE_DIR}/Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Common/
+    ${CMAKE_CURRENT_SOURCE_DIR}/
+    ${CMAKE_CURRENT_SOURCE_DIR}/RfgTools++/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
 )
 
 target_link_libraries(RfgTools++ PRIVATE zlibstatic)

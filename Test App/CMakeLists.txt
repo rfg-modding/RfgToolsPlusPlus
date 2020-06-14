@@ -7,8 +7,8 @@ project (TestApp VERSION 1.0.0
 # Get list of source files in project src folders recursively
 # Places in SOURCES variable
 file(GLOB_RECURSE SOURCES 
-    "${CMAKE_SOURCE_DIR}/Test App/*.cpp"
-    "${CMAKE_SOURCE_DIR}/Test App/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
 )
 
 # Add source to this project's executable.
@@ -16,13 +16,13 @@ add_executable (TestApp ${SOURCES})
 
 # Add include directories
 target_include_directories(TestApp SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/
-    ${CMAKE_SOURCE_DIR}/Test App/
-    ${CMAKE_SOURCE_DIR}/Common/
-    ${CMAKE_SOURCE_DIR}/RfgTools++/
-    ${CMAKE_SOURCE_DIR}/RfgTools++/RfgTools++/
-    ${CMAKE_SOURCE_DIR}/Dependencies/zlib/
-    ${CMAKE_SOURCE_DIR}/Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/
+    ${CMAKE_CURRENT_SOURCE_DIR}/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Common/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../RfgTools++/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../RfgTools++/RfgTools++/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
 )
 
 # Add statically linked libs
