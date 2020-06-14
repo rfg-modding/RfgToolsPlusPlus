@@ -1,4 +1,6 @@
 ﻿
+set(BUILD_RFGTOOLS_TEST_APP FALSE)
+
 # Top level project. Treating this like a VS solution
 cmake_minimum_required (VERSION 3.8)
 project ("RfgTools++ Solution")
@@ -18,5 +20,7 @@ set(CMAKE_CXX_EXTENSIONS         OFF)
 # Include sub-projects.
 add_subdirectory("Dependencies/zlib")
 add_subdirectory("Common")
-add_subdirectory("Test App")
+if(BUILD_RFGTOOLS_TEST_APP)
+    add_subdirectory("Test App")
+endif()
 add_subdirectory("RfgTools++")
