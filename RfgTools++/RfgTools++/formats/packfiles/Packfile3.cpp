@@ -5,8 +5,14 @@
 #include "common/concurrency/Parallel.h"
 #include "compression/Compression.h"
 #include <BinaryTools/BinaryReader.h>
+#include <filesystem>
 #include <iostream>
 #include <future>
+
+Packfile3::Packfile3(const string& path) : path_(path)
+{
+    name_ = Path::GetFileName(path_);
+}
 
 void Packfile3::ReadMetadata(BinaryReader* reader)
 {
@@ -27,6 +33,9 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     //Set flag shorthand vars
     Compressed = (Header.Flags & PACKFILE_FLAG_COMPRESSED) == PACKFILE_FLAG_COMPRESSED;
     Condensed = (Header.Flags & PACKFILE_FLAG_CONDENSED) == PACKFILE_FLAG_CONDENSED;
+
+    if (std::filesystem::file_size(path_) <= 2048)
+        return;
 
     //Reserve enough space in the vector for the entries
     Entries.reserve(Header.NumberOfSubfiles);
@@ -63,6 +72,9 @@ void Packfile3::ExtractSubfiles(const string& outputPath)
     //Read metadata if it hasn't been. Reuse the reader
     if (!readMetadata_)
         ReadMetadata(reader);
+
+    if (std::filesystem::file_size(path_) <= 2048)
+        return;
 
     //Seek to data block
     reader->SeekBeg(dataBlockOffset_);

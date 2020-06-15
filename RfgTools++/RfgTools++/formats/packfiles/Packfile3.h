@@ -16,8 +16,7 @@ class BinaryReader;
 class Packfile3
 {
 public:
-    Packfile3(const string& path) : path_(path) {}
-    ~Packfile3() { delete filenamesBuffer_; }
+    Packfile3(const string& path);
 
     void ReadMetadata(BinaryReader* reader = nullptr);
     void ExtractSubfiles(const string& outputPath);
@@ -26,6 +25,11 @@ public:
     //Handles decompressing compressed subfiles. Currently does not work on packfiles with both the compressed & condensed flags
     std::optional<std::span<u8>> ExtractSingleFile(s_view name);
     bool Contains(s_view subfileName);
+
+    //Done here instead of in a destructor due destructor for some reason being called when sticking these in a std::vector
+    void Cleanup() { delete filenamesBuffer_; }
+    const char* NameCstr() const { return name_.data(); }
+    string Name() const { return name_; }
 
     Packfile3Header Header;
     bool Compressed = false;
@@ -49,6 +53,7 @@ private:
     void WriteStreamsFile(const string& outputPath);
 
     string path_ = {};
+    string name_ = {};
     bool readMetadata_ = false;
     u8* filenamesBuffer_ = nullptr;
     u64 dataBlockOffset_ = 0;
