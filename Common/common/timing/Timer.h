@@ -47,6 +47,7 @@ public:
     long long ElapsedMilliseconds();
     long long ElapsedMicroseconds();
     long long ElapsedNanoseconds();
+    float ElapsedSecondsPrecise();
 
 private:
     std::chrono::high_resolution_clock::time_point StartTime;

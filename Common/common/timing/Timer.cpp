@@ -45,3 +45,9 @@ long long Timer::ElapsedNanoseconds()
     EndTime = std::chrono::steady_clock::now();
     return std::chrono::duration_cast<std::chrono::nanoseconds>(EndTime - StartTime).count();
 }
+
+float Timer::ElapsedSecondsPrecise()
+{
+    EndTime = std::chrono::steady_clock::now();
+    return std::chrono::duration<float, std::chrono::seconds::period>(EndTime - StartTime).count();
+}
