@@ -19,6 +19,9 @@ set(CMAKE_CXX_EXTENSIONS         OFF)
 
 # Include sub-projects.
 add_subdirectory("Dependencies/zlib")
+# Rename this again because zlib infuriatingly renames it and causes compile errors
+file(RENAME ${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/zlib/zconf.h.included ${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/zlib/zconf.h)
+
 add_subdirectory("Common")
 if(BUILD_RFGTOOLS_TEST_APP)
     add_subdirectory("Test App")
