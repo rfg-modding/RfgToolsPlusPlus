@@ -13,6 +13,7 @@
 
 class BinaryReader;
 
+//Packfile version 3 used in RFG and RFGR
 class Packfile3
 {
 public:
@@ -26,7 +27,7 @@ public:
     std::optional<std::span<u8>> ExtractSingleFile(s_view name);
     bool Contains(s_view subfileName);
 
-    //Done here instead of in a destructor due destructor for some reason being called when sticking these in a std::vector
+    //Done here instead of in a destructor due to destructor for some reason being called when sticking these in a std::vector
     void Cleanup() { delete filenamesBuffer_; }
     const char* NameCstr() const { return name_.data(); }
     string Name() const { return name_; }

@@ -1,7 +1,7 @@
 #pragma once
 #include "common/Typedefs.h"
 
-//Data about a subfile stored inside a packfile
+//Data about a subfile stored inside a packfile for packfile version 3
 class Packfile3Entry
 {
 public:

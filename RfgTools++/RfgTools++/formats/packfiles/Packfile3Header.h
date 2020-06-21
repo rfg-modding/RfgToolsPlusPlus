@@ -1,6 +1,7 @@
 #pragma once
 #include "common/Typedefs.h"
 
+//Header for packfile version 3
 class Packfile3Header
 {
 public:
