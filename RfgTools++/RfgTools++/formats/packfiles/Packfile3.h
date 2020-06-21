@@ -3,6 +3,7 @@
 #include "Common/memory/Span.h"
 #include "Packfile3Header.h"
 #include "Packfile3Entry.h"
+#include "RfgTools++/formats/asm/AsmFile5.h"
 #include <vector>
 #include <span>
 #include <optional>
@@ -27,6 +28,9 @@ public:
     std::optional<std::span<u8>> ExtractSingleFile(s_view name);
     bool Contains(s_view subfileName);
 
+    //Read data from any asm_pc files the vpp_pc contains. Used to read contents of str2_pc files inside vpp_pc files
+    void ReadAsmFiles();
+
     //Done here instead of in a destructor due to destructor for some reason being called when sticking these in a std::vector
     void Cleanup() { delete filenamesBuffer_; }
     const char* NameCstr() const { return name_.data(); }
@@ -37,14 +41,8 @@ public:
     bool Condensed = false;
     std::vector<Packfile3Entry> Entries = {};
     std::vector<const char*> EntryNames = {};
-    std::vector<string> EntryNamesAlt = {};
 
-    //Todo: Implement this + test speed difference
-    //NOT YET IMPLEMENTED
-    //The largest data block size that will be loaded into memory all at once
-    //This is faster than reading each sub-block individually, but increases RAM usage.
-    //For files with both the compressed and condensed flag this does not matter. Those must be loaded in all at once currently.
-    u64 MaxSingleReadDataExtractSizeBytes = 300000000;
+    std::vector<AsmFile5> AsmFiles = {};
 
 private:
     bool Contains(s_view subfileName, u32& index);

@@ -227,6 +227,27 @@ bool Packfile3::Contains(s_view subfileName)
     return Contains(subfileName, index);
 }
 
+void Packfile3::ReadAsmFiles()
+{
+    if (!readMetadata_)
+        ReadMetadata();
+
+    for (u32 i = 0; i < Entries.size(); i++)
+    {
+        if (Path::GetExtension(EntryNames[i]) != ".asm_pc")
+            continue;
+
+        auto* name = EntryNames[i];
+        auto data = ExtractSingleFile(EntryNames[i]);
+        if (!data)
+            continue;
+
+        AsmFile5& asmFile = AsmFiles.emplace_back();
+        BinaryReader reader(data.value());
+        asmFile.Read(reader);
+    }
+}
+
 bool Packfile3::Contains(s_view subfileName, u32& index)
 {
     for (u32 i = 0; i < Entries.size(); i++)

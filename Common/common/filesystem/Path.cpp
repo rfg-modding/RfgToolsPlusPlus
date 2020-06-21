@@ -54,6 +54,14 @@ namespace Path
         return std::filesystem::path(FullPath).extension().string();
     }
 
+    string GetExtension(const char* FullPath)
+    {
+        if (!std::filesystem::path(FullPath).has_extension())
+            return {};
+
+        return std::filesystem::path(FullPath).extension().string();
+    }
+
     void CreatePath(const string& fullPath)
     {
         if (!std::filesystem::exists(fullPath))

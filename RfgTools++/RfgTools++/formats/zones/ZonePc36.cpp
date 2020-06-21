@@ -6,15 +6,8 @@
 #include <filesystem>
 #include <iostream>
 
-ZonePc36::ZonePc36(const string& path) : path_(path)
+void ZonePc36::Read(BinaryReader& reader)
 {
-    name_ = Path::GetFileName(path_);
-}
-
-void ZonePc36::Read()
-{
-    BinaryReader reader(path_);
-
     //Read and validate header
     reader.ReadToMemory(&Header, sizeof(ZonePcHeader36));
     if (Header.Signature != 1162760026) //Should equal ascii value for "ZONE"

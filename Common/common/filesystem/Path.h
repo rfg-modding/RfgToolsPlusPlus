@@ -16,6 +16,7 @@ namespace Path
 
     [[nodiscard]] string GetExtension(const std::filesystem::path& FullPath);
     [[nodiscard]] string GetExtension(const string& FullPath);
+    [[nodiscard]] string GetExtension(const char* FullPath);
 
     void CreatePath(const string& fullPath);
 }

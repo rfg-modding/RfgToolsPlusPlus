@@ -17,8 +17,6 @@ file(GLOB_RECURSE SOURCES
 # Add source to this project's static library (.lib)
 add_library(RfgTools++ STATIC ${SOURCES})
 
-message(${CMAKE_CURRENT_SOURCE_DIR})
-
 # Add include directories
 target_include_directories(RfgTools++ SYSTEM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../Common/
