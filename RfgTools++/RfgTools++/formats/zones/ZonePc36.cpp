@@ -2,6 +2,7 @@
 #include "common/filesystem/Path.h"
 #include "common/filesystem/File.h"
 #include "common/string/String.h"
+#include "hashes/HashGuesser.h"
 #include <BinaryTools/BinaryReader.h>
 #include <filesystem>
 #include <iostream>
@@ -26,7 +27,10 @@ void ZonePc36::Read(BinaryReader& reader)
     for (u32 i = 0; i < Header.NumObjects; i++)
     {
         ZoneObject36& object = Objects.emplace_back();
-        reader.ReadToMemory(&object, sizeof(ZoneObject36));
-        reader.Skip(object.PropBlockSize);
+        object.Read(reader);
     }
+
+    //Guess zone district name
+    auto result = HashGuesser::GuessHashOriginString(Header.DistrictHash);
+    districtName_ = result ? result.value() : "unknown";
 }

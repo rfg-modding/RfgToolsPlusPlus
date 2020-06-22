@@ -13,9 +13,11 @@ public:
     void Read(BinaryReader& reader);
 
     void Cleanup() { delete objectsBuffer_; }
-    const char* NameCstr() const { return name_.data(); }
+    const char* NameCstr() const { return name_.c_str(); }
     string Name() const { return name_; }
     void SetName(const string& name) { name_ = name; }
+    const char* DistrictNameCstr() { return districtName_.c_str(); }
+    string DistrictName() { return districtName_; }
     bool HasRelationalData() const { return hasRelationalData_; }
 
     ZonePcHeader36 Header;
@@ -24,7 +26,8 @@ public:
     std::vector<ZoneObject36> Objects = {};
 
 private:
-    string name_ = {};
+    string name_;
+    string districtName_;
 
     u8* objectsBuffer_ = nullptr;
     bool hasRelationalData_ = false;
