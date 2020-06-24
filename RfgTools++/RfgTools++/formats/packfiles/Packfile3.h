@@ -45,6 +45,8 @@ public:
     std::vector<AsmFile5> AsmFiles = {};
 
 private:
+    void FixEntryDataOffsets();
+    u32 GetAlignmentPad(u64 position);
     bool Contains(s_view subfileName, u32& index);
     void ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader);
     void ExtractCompressed(const string& outputPath, BinaryReader& reader);

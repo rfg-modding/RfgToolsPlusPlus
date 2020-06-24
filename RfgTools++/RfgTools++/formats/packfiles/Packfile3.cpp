@@ -40,9 +40,12 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     //Reserve enough space in the vector for the entries
     Entries.reserve(Header.NumberOfSubfiles);
 
-    //Read the entries directly into the vector and update it's size via ::assign()
-    reader->ReadToMemory(Entries.data(), Header.NumberOfSubfiles * sizeof(Packfile3Entry)); //Todo: Double check this isn't actually making a second copy somehow
-    Entries.assign(Entries.data(), Entries.data() + Header.NumberOfSubfiles); //This seems a bit hacky
+    //Read entries
+    for (u32 i = 0; i < Header.NumberOfSubfiles; i++)
+    {
+        Packfile3Entry& entry = Entries.emplace_back();
+        entry.Read(*reader);
+    }
     reader->Align(2048); //Align to reach filename block
 
     //Read filenames into heap buffer
@@ -60,6 +63,7 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     }
 
     dataBlockOffset_ = reader->Position();
+    FixEntryDataOffsets();
     readMetadata_ = true;
     //Todo: May need to patch data offsets when they overflow over the i32 size limit. See RfgTools C# packfile tools
 }
@@ -216,6 +220,7 @@ std::optional<std::span<u8>> Packfile3::ExtractSingleFile(s_view name)
         //Read data into buffer and return it
         u8* buffer = new u8[entry.DataSize];
         reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
+        u64 absOffset = dataBlockOffset_ + entry.DataOffset;
         reader.ReadToMemory(buffer, entry.DataSize);
         return std::span<u8>{ buffer, entry.DataSize };
     }
@@ -246,6 +251,49 @@ void Packfile3::ReadAsmFiles()
         BinaryReader reader(data.value());
         asmFile.Read(reader);
     }
+}
+
+//Fix data offsets. Values in packfile not always valid.
+//Ignores packfiles that are compressed AND condensed since those must
+//be fully extracted and data offsets aren't relevant in that case.
+void Packfile3::FixEntryDataOffsets()
+{
+    if (Compressed && Condensed)
+        return;
+
+    u64 runningDataOffset = 0; //Track relative offset from data section start
+    for(auto& entry : Entries)
+    {
+        //Set entry offset
+        entry.DataOffset = runningDataOffset;
+
+        //Update offset based on entry size and storage type
+        if (Compressed) //Compressed, not condensed
+        {
+            runningDataOffset += entry.CompressedDataSize;
+            long alignmentPad = GetAlignmentPad(runningDataOffset);
+            runningDataOffset += alignmentPad;
+        }
+        else //Not compressed, maybe condensed
+        {
+            runningDataOffset += entry.DataSize;
+            if (!Condensed)
+            {
+                long alignmentPad = GetAlignmentPad(runningDataOffset);
+                runningDataOffset += alignmentPad;
+            }
+        }
+    }
+}
+
+u32 Packfile3::GetAlignmentPad(u64 position)
+{
+    int remainder = (int)(position % 2048U);
+    if (remainder > 0)
+    {
+        return 2048 - remainder;
+    }
+    return 0;
 }
 
 bool Packfile3::Contains(s_view subfileName, u32& index)
