@@ -250,6 +250,8 @@ void Packfile3::ReadAsmFiles()
         AsmFile5& asmFile = AsmFiles.emplace_back();
         BinaryReader reader(data.value());
         asmFile.Read(reader);
+
+        delete[] data.value().data();
     }
 }
 
