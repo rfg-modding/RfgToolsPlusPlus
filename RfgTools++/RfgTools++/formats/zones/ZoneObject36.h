@@ -3,6 +3,7 @@
 #include "RfgTools++/types/Vec3.h"
 #include "hashes/HashGuesser.h"
 #include <BinaryTools/BinaryReader.h>
+#include <iostream>
 
 //Zone object used in zone format version 36. Found in rfgzone_pc and layer_pc files in RFG and RFGR
 class ZoneObject36
@@ -30,9 +31,18 @@ public:
     {
         //Read data from file. First 56 bytes of this struct match the file data layout
         reader.ReadToMemory(this, 56);
-        //Todo: Read and parse property data //For now just skipping it because that's gonna be a lot of work
-        reader.Skip(PropBlockSize);
 
+        u64 position = reader.Position();
+        
+        //Todo: Read and parse property data //For now just skipping it because that's gonna be a lot of work
+        try
+        {
+            reader.Skip(PropBlockSize);
+        }
+        catch (std::exception& ex)
+        {
+            std::cout << ex.what();
+        }
         //Try to guess the object classname string from the hash
         auto result = HashGuesser::GuessHashOriginString(ClassnameHash);
         Classname = result ? result.value() : "unknown";

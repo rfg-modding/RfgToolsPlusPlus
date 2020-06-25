@@ -11,6 +11,11 @@ namespace String
             return false;
     }
 
+    bool StartsWith(s_view value, s_view start)
+    {
+        return value.compare(0, start.length(), start) == 0;
+    }
+
     string ToLower(const string& value)
     {
         std::string Copy = value; //Copy the string since we want to leave the original string intact
