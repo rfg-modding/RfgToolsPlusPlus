@@ -5,6 +5,8 @@
 #include <BinaryTools/BinaryReader.h>
 #include <iostream>
 
+class IZoneProperty;
+
 //Zone object used in zone format version 36. Found in rfgzone_pc and layer_pc files in RFG and RFGR
 class ZoneObject36
 {
@@ -22,29 +24,10 @@ public:
     u32 Num = 0;  
     u16 NumProps = 0; //Number of properties describing the object that immediately follow these values in the zone file
     u16 PropBlockSize = 0; //Size of just the prop data
-    //Followed by properties list. Will store separately so this can be directly memory mapped
 
-    //Everything after this point isn't part of the file data layout
+    //Everything after this point isn't part of the exact file data layout
     string Classname;
+    std::vector<IZoneProperty*> Properties = {};
 
-    void Read(BinaryReader& reader)
-    {
-        //Read data from file. First 56 bytes of this struct match the file data layout
-        reader.ReadToMemory(this, 56);
-
-        u64 position = reader.Position();
-        
-        //Todo: Read and parse property data //For now just skipping it because that's gonna be a lot of work
-        try
-        {
-            reader.Skip(PropBlockSize);
-        }
-        catch (std::exception& ex)
-        {
-            std::cout << ex.what();
-        }
-        //Try to guess the object classname string from the hash
-        auto result = HashGuesser::GuessHashOriginString(ClassnameHash);
-        Classname = result ? result.value() : "unknown";
-    }
+    void Read(BinaryReader& reader);
 };
