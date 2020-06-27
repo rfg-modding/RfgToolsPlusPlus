@@ -2,15 +2,26 @@
 #include "common/Typedefs.h"
 #include "RfgTools++/types/Vec3.h"
 #include "hashes/HashGuesser.h"
+#include "properties/IZoneProperty.h"
 #include <BinaryTools/BinaryReader.h>
 #include <iostream>
-
-class IZoneProperty;
 
 //Zone object used in zone format version 36. Found in rfgzone_pc and layer_pc files in RFG and RFGR
 class ZoneObject36
 {
 public:
+    //Attempts to get a property from the zone object. Returns nullptr if it fails.
+    template <class T = IZoneProperty>
+    T* GetProperty(const string& propertyName)
+    {
+        for (auto& prop : Properties)
+        {
+            if (prop && prop->Name == propertyName)
+                return reinterpret_cast<T*>(prop);
+        }
+        return nullptr;
+    }
+
     //First 56 bytes of this class are the exact data layout found in zone files
     u32 ClassnameHash = 0;
     u32 Handle = 0;

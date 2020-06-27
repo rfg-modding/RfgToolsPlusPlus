@@ -7,6 +7,7 @@
 #include <vector>
 #include <optional>
 
+//Todo: Move this + hierarchy code out of ZonePc36 into it's own class for managing zones & zone data
 class ZoneObjectNode36
 {
 public:
@@ -39,7 +40,7 @@ class ZonePc36
 public:
     void Read(BinaryReader& reader);
 
-    //Todo: This will need to be continually updated if the number of zone objects changes (possibly resizing the vector and invalidating the pointers)
+    //Todo: The hierarchy will need to be continually updated if the number of zone objects changes since that possibly resizes the vector thus invalidating the hierarchy pointers
     //Generate a hierarchical view of the zone objects. Has pointers to parent objects and their children 
     //to reduce the number of object lookups and make it easier to iterate objects and their relatives.
     void GenerateObjectHierarchy();
@@ -57,6 +58,8 @@ public:
     bool HasRelationalData() const { return hasRelationalData_; }
     //Get an object from it's handle. Does not look in the hierarchical view. Just looks at flat list of objects
     ZoneObject36* GetObject(u32 handle);
+    //Get first object of the provided type.
+    ZoneObject36* GetSingleObject(const string& typeString);
 
     ZonePcHeader36 Header;
     //ZonePcRelationData36 RelationalData;

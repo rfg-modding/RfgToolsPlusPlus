@@ -14,6 +14,7 @@ public:
     static void ReadObjectProperties(ZoneObject36& object, BinaryReader& reader);
 
 private:
+    static IZoneProperty* ReadProperty(BinaryReader& reader, u16 type, u16 size, u32 nameHash);
     static void Init();
 
     //Zone property definitions. Matches name string hashes (the u32 key) to a function which tries to read that properties data 

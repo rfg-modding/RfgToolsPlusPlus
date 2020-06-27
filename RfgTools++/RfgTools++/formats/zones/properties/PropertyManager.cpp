@@ -12,12 +12,58 @@ void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& r
     if (!initialized_)
         Init();
 
-    ////Todo: Read and parse property data //For now just skipping it because that's gonna be a lot of work
-    reader.Skip(object.PropBlockSize);
+    //Read properties
+    for (u32 i = 0; i < object.NumProps; i++)
+    {
+        u16 type = reader.ReadUint16();
+        u16 size = reader.ReadUint16();
+        u32 propertyNameHash = reader.ReadUint32();
+        u64 propertyStartPos = reader.Position();
 
-    //Todo: Remember to Align(4) after reading data. See C# prop manager
+        //Attempt to read property data
+        IZoneProperty* prop = ReadProperty(reader, type, size, propertyNameHash);
+
+        //Skip property if read failed
+        if (!prop)
+        {
+            reader.SeekBeg(propertyStartPos);
+            reader.Skip(size);
+        }
+        //Todo: Make UnknownDataProperty for failed reads / unknown property types to preserve data. Will be needed when saving is added
+
+        //Else add it to the list & align to next property
+        object.Properties.push_back(prop);
+        reader.Align(4);
+    }
 
     auto a = 2;
+}
+
+IZoneProperty* PropertyManager::ReadProperty(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
+{
+    //Attempt to find property definition based on type and nameHash
+    switch (type)
+    {
+    case 4:
+    {
+        auto result = propertyTypes4_.find(nameHash);
+        return result == propertyTypes4_.end() ? nullptr : result->second(reader, type, size, nameHash);
+    }
+    case 5:
+    {
+        auto result = propertyTypes5_.find(nameHash);
+        return result == propertyTypes5_.end() ? nullptr : result->second(reader, type, size, nameHash);
+    }
+    case 6:
+    {
+        auto result = propertyTypes6_.find(nameHash);
+        return result == propertyTypes6_.end() ? nullptr : result->second(reader, type, size, nameHash);
+    }
+    default:
+        throw std::runtime_error("Error! Encountered unknown zone object property type value(" + std::to_string(type) + "). This probably means there's a read error happening elsewhere.");
+        break;
+    }
+    return nullptr;
 }
 
 //Macro to simplify adding property definitions
@@ -28,7 +74,12 @@ void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& r
     {                                                                              \
         IZoneProperty* prop = new ConcreteType;                                    \
         if (prop->Read(reader, type, size, nameHash))                              \
+        {                                                                          \
+            prop->Name = #nameString;                                              \
+            prop->Type = type;                                                     \
+            prop->NameHash = Hash::HashVolitionCRC(#nameString, 0);                \
             return prop;                                                           \
+        }                                                                          \
         else                                                                       \
         {                                                                          \
             delete prop;                                                           \
@@ -37,7 +88,13 @@ void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& r
     }                                                                              \
 }                                                                                  \
 
-//Todo: Consider other ways of handling properties. Still not sure if this is the best way to go
+
+string Name;
+u32 Type = 0;
+u32 NameHash = 0;
+ZonePropertyType DataType = ZonePropertyType::None;
+
+//Todo: Consider other ways of handling properties. Not sure if this is the best way to go about it
 void PropertyManager::Init()
 {
     //Properties with the type value of 4

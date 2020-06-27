@@ -132,3 +132,14 @@ ZoneObject36* ZonePc36::GetObject(u32 handle)
     }
     return nullptr;
 }
+
+ZoneObject36* ZonePc36::GetSingleObject(const string& classname)
+{
+    //Todo: May be faster to hash the classname string first and compare that
+    for (auto& object : Objects)
+    {
+        if (object.Classname == classname)
+            return &object;
+    }
+    return nullptr;
+}
