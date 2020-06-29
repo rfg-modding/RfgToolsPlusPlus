@@ -42,8 +42,11 @@ public:
 
     void Read(BinaryReader& reader)
     {
+        u64 startPos = reader.Position();
+
         //Read static data that's always present in this structure in files and always 48 bytes
         reader.ReadToMemory(this, 48);
+        reader.Align(16);
 
         //Reserve spots for the dynamic objects since we know how many we need ahead of time
         Submeshes.reserve(NumSubmeshes);
@@ -60,5 +63,11 @@ public:
             RenderBlock& renderBlock = RenderBlocks.emplace_back();
             reader.ReadToMemory(&renderBlock, sizeof(RenderBlock));
         }
+
+        u32 endVerificationHash = reader.ReadUint32();
+        if (VerificationHash != endVerificationHash)
+            throw std::runtime_error("Error! Mesh verification hashes didn't match when reading a mesh data block");
+        if (reader.Position() - startPos != CpuDataSize)
+            throw std::runtime_error("Error! Mesh data block size doesn't equal the expected data size!");
     }
 };
