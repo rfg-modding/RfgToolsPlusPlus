@@ -87,6 +87,7 @@ int main()
 
     //Align to 16 bytes and read size of texture names block
     cpuFile.Align(16);
+    auto a = cpuFile.Position();
     u32 textureNamesBlockSize = cpuFile.ReadUint32();
 
     //Read texture names block. These are double null terminated
@@ -201,6 +202,95 @@ int main()
 
     if (cpuFile.Position() != header.destruction_offset)
         throw std::exception("Error! Current location does not equal the destruction data offset as it is expected to at this point!");
+
+    cpuFile.Align(128); //Todo: Just guessing at this point...
+
+    std::cout << "Position at expected start of destroyables data block: " << cpuFile.Position() << "\n";
+
+    u32 numDestroyables = cpuFile.ReadUint32();
+    //Seemingly random data skip that the game does. Maybe empty space in case it's needed eventually
+    cpuFile.Skip((numDestroyables * 8) + 4);
+    cpuFile.Align(16);
+
+    std::cout << "Position at expected start of first destroyable: " << cpuFile.Position() << "\n";
+
+    struct vector
+    {
+        f32 x;
+        f32 y;
+        f32 z;
+    };
+    struct destroyable_base
+    {
+        u32 aabb_tree_offset; //rfg_rbb_node
+        u32 base_objects_offset; //rfg_subpiece_base
+        u32 base_extra_data_offset; //rfg_subpiece_base_extra_data
+        int num_objects;
+        u32 base_links_offset; //base_links
+        int num_links;
+        u32 base_dlods_offset; //base_dlods
+        int num_dlods;
+        u32 inst_data_offset; //rfg_destroyable_base_instance_data
+        u32 transform_buffer_offset; //unsigned char
+        float base_structural_mass;
+    };
+    struct subpiece_base
+    {
+        vector prel_bmin;
+        vector prel_bmax;
+        vector pos;
+        vector center_of_mass;
+        f32 mass;
+        u32 dlod_key;
+        u32 links_offset; //ushort
+        u8 physical_material_index;
+        u8 shape_type;
+        u8 num_links;
+        u8 flags;
+    };
+    struct subpiece_base_data
+    {
+        u32 shape_offset; //hkpShape
+        u16 collision_model;
+        u16 render_subpiece;
+        u32 h;
+    };
+    struct destroyable
+    {
+        destroyable_base base;
+        std::vector<subpiece_base> subpieces;
+        std::vector<subpiece_base_data> subpieces_data;
+    };
+    std::vector<destroyable> destroyables;
+    for (u32 i = 0; i < numDestroyables; i++)
+    {
+        //Create new destroyable instance
+        auto& destroyable = destroyables.emplace_back();
+
+        //Read base data and align to next piece of data
+        cpuFile.ReadToMemory(&destroyable.base, sizeof(destroyable_base));
+        cpuFile.Align(128);
+
+        auto a = cpuFile.Position();
+        
+        //Todo: Could allocate a buffer and read all this data at once then access with a span
+        //Read base object data
+        for (u32 j = 0; j < destroyable.base.num_objects; j++)
+        {
+            auto& subpiece = destroyable.subpieces.emplace_back();
+            cpuFile.ReadToMemory(&subpiece, sizeof(subpiece_base));
+        }
+        for (u32 j = 0; j < destroyable.base.num_objects; j++)
+        {
+            auto& subpiece_data = destroyable.subpieces_data.emplace_back();
+            cpuFile.ReadToMemory(&subpiece_data, sizeof(subpiece_base_data));
+        }
+
+
+
+        auto b = cpuFile.Position();
+        auto c = 2;
+    }
 
     return 0;
 }
