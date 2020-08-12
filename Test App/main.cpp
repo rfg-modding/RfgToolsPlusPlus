@@ -57,6 +57,8 @@ int main()
 
     string cpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l1.vpp_pc/Unpack/0h_c2337.str2_pc/0202tower_guard.cchk_pc";
     string gpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l1.vpp_pc/Unpack/0h_c2337.str2_pc/0202tower_guard.gchk_pc";
+    //string cpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l0.vpp_pc/Unpack/0h_c2016.str2_pc/0101landing_pad_small_a.cchk_pc";
+    //string gpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l0.vpp_pc/Unpack/0h_c2016.str2_pc/0101landing_pad_small_a.gchk_pc";
 
     BinaryReader cpuFile(cpuFilePath);
     BinaryReader gpuFile(gpuFilePath);
@@ -220,6 +222,12 @@ int main()
         f32 y;
         f32 z;
     };
+    struct matrix
+    {
+        vector rvec;
+        vector uvec;
+        vector fvec;
+    };
     struct destroyable_base
     {
         u32 aabb_tree_offset; //rfg_rbb_node
@@ -255,11 +263,31 @@ int main()
         u16 render_subpiece;
         u32 h;
     };
+    struct link_base
+    {
+        i32 yield_max;
+        f32 area;
+        i16 obj[2];
+        u8 flags;
+        u8 padding[3];
+    };
+    struct dlod_base
+    {
+        u32 name_hash;
+        vector pos;
+        matrix orient;
+        u16 render_subpiece;
+        u16 first_piece;
+        u8 max_pieces;
+        u8 padding[3];
+    };
     struct destroyable
     {
         destroyable_base base;
         std::vector<subpiece_base> subpieces;
         std::vector<subpiece_base_data> subpieces_data;
+        std::vector<link_base> links;
+        std::vector<dlod_base> dlods;
     };
     std::vector<destroyable> destroyables;
     for (u32 i = 0; i < numDestroyables; i++)
@@ -286,9 +314,39 @@ int main()
             cpuFile.ReadToMemory(&subpiece_data, sizeof(subpiece_base_data));
         }
 
-
-
+        //for (u32 j = 0; j < destroyable.base.num_objects; j++)
+        //{
+        //    std::cout << destroyable.subpieces_data[j].render_subpiece << "\n";
+        //}
+        
         auto b = cpuFile.Position();
+        //TODO: START HERE WHEN CONTINUING. LIKELY LOCATION OF BUG CAUSES FURTHER READS TO BE WRONG
+        //Todo: Verify this skip. It's a guess based on behavior seen via the debugger. The code that does this skip is confusing
+        cpuFile.Skip(12 * destroyable.base.num_objects);
+        cpuFile.Align(4);
+        auto d = cpuFile.Position();
+
+        //Read links
+        for (u32 j = 0; j < destroyable.base.num_links; j++)
+        {
+            auto& link = destroyable.links.emplace_back();
+            cpuFile.ReadToMemory(&link, sizeof(link_base));
+        }
+        auto e = cpuFile.Position();
+        cpuFile.Align(4);
+        auto f = cpuFile.Position();
+
+
+        //Read dlods
+        for (u32 j = 0; j < destroyable.base.num_dlods; j++)
+        {
+            auto& dlod = destroyable.dlods.emplace_back();
+            cpuFile.ReadToMemory(&dlod, sizeof(dlod_base));
+        }
+        auto g = cpuFile.Position();
+        cpuFile.Align(4);
+        auto h = cpuFile.Position();
+
         auto c = 2;
     }
 
