@@ -285,6 +285,34 @@ int main()
         u8 max_pieces;
         u8 padding[3];
     };
+    struct fp_aabb
+    {
+        __int16 min_x;
+        __int16 min_y;
+        __int16 min_z;
+        __int16 max_x;
+        __int16 max_y;
+        __int16 max_z;
+    };
+    struct rfg_rbb_node
+    {
+        void Read(BinaryReader& reader)
+        {
+            reader.ReadToMemory(this, sizeof(rfg_rbb_node));
+        }
+        int num_objects;
+        fp_aabb aabb;
+        u32 node_data_offset; //et_ptr_offset<unsigned char, 0> node_data;
+    };
+    struct destroyable_instance_data
+    {
+        unsigned int objects_offset;
+        unsigned int links_offset;
+        unsigned int dlods_offset;
+        unsigned int data_size;
+        u32 buffer_offset; //et_ptr_offset<unsigned char, 0> buffer;
+    };
+
     struct destroyable
     {
         destroyable_base base;
@@ -292,6 +320,8 @@ int main()
         std::vector<subpiece_base_data> subpieces_data;
         std::vector<link_base> links;
         std::vector<dlod_base> dlods;
+        std::vector<rfg_rbb_node> rbb_nodes;
+        destroyable_instance_data instance_data;
     };
     std::vector<destroyable> destroyables;
     for (u32 i = 0; i < numDestroyables; i++)
@@ -352,6 +382,42 @@ int main()
         cpuFile.Align(4);
         auto h = cpuFile.Position();
 
+
+        //Read rbb nodes
+        destroyable.rbb_nodes.push_back(rfg_rbb_node());
+        rfg_rbb_node* curNode = &destroyable.rbb_nodes.back();
+        curNode->Read(cpuFile);
+        u32 num_objects = curNode->num_objects;
+        while (num_objects > 0)
+        {
+            //Todo: Implement this loop. Not yet added since the test file doesn't use it
+            throw std::exception("Support for multiple rbb nodes not yet added!");
+        }
+        auto k = cpuFile.Position();
+        cpuFile.Align(4);
+        auto l = cpuFile.Position();
+
+        //Read instance data. Seems to be junk in the file and set at runtime. Unless it's offset from the packfile start or something painful like that
+        cpuFile.ReadToMemory(&destroyable.instance_data, sizeof(destroyable_instance_data));
+        static_assert(sizeof(destroyable_instance_data) == 20, "destroyable_instance_data size check failed!");
+
+        //Todo: There may be some data we have to read/skip here. The code at this point was confusing. Something something aabb instances
+
+        auto m = cpuFile.Position();
+        cpuFile.Align(16);
+        auto n = cpuFile.Position();
+
+        u32 maybeTransformBufferSize = cpuFile.ReadUint32();
+        cpuFile.Skip(destroyable.subpieces.size() * 36);
+        auto o = cpuFile.Position();
+        cpuFile.Align(16);
+        auto p = cpuFile.Position();
+        
+
+        auto c = 2;
+    }
+
+    //Read vertex and index data
         auto c = 2;
     }
 
