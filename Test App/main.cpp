@@ -209,12 +209,16 @@ int main()
 
     std::cout << "Position at expected start of destroyables data block: " << cpuFile.Position() << "\n";
 
+    //TODO: IMPORTANT
+    //TODO: READ GENERAL OBJECTS HERE IF THE CHUNK HAS ANY. NEED TO READ VALUE FROM HEADER FIRST, CURRENTLY NOT
+
     u32 numDestroyables = cpuFile.ReadUint32();
     //Seemingly random data skip that the game does. Maybe empty space in case it's needed eventually
     cpuFile.Skip((numDestroyables * 8) + 4);
     cpuFile.Align(16);
 
     std::cout << "Position at expected start of first destroyable: " << cpuFile.Position() << "\n";
+
 
     struct vector
     {
@@ -319,10 +323,11 @@ int main()
         //    std::cout << destroyable.subpieces_data[j].render_subpiece << "\n";
         //}
         
+        //Todo: Figure out what this data is meant to be. Game has some physical material code here. Maybe link material
         auto b = cpuFile.Position();
-        //TODO: START HERE WHEN CONTINUING. LIKELY LOCATION OF BUG CAUSES FURTHER READS TO BE WRONG
-        //Todo: Verify this skip. It's a guess based on behavior seen via the debugger. The code that does this skip is confusing
-        cpuFile.Skip(12 * destroyable.base.num_objects);
+        for (auto& subpiece : destroyable.subpieces)
+            cpuFile.Skip(subpiece.num_links * 2);
+
         cpuFile.Align(4);
         auto d = cpuFile.Position();
 
