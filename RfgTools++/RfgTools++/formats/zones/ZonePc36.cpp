@@ -76,7 +76,7 @@ void ZonePc36::GenerateObjectHierarchy()
         //Throw error if couldn't find parent. So far only seen single level object trees with parents in the same zone. This will detect things that don't fit that
         if (!maybeParent)
         {
-            std::cout << "Warning in \"" << Name() << "\". Object " << object.Handle << " could not find it's parent with handle " << object.Parent << "\n";
+            //std::cout << "Warning in \"" << Name() << "\". Object " << object.Handle << " could not find it's parent with handle " << object.Parent << "\n";
             break;
         }
 
@@ -93,7 +93,7 @@ void ZonePc36::GenerateObjectHierarchy()
             //Todo: Search in other zones/files for parents and siblings + move this step into a different class. Likely need to check matching p_ and non p_ files
             if (!maybeSibling)
             {
-                std::cout << "Warning in \"" << Name() << "\". Object " << currentObject->Handle << " could not find it's sibling with handle " << currentObject->Sibling << "\n";
+                //std::cout << "Warning in \"" << Name() << "\". Object " << currentObject->Handle << " could not find it's sibling with handle " << currentObject->Sibling << "\n";
                 break;
             }
 
