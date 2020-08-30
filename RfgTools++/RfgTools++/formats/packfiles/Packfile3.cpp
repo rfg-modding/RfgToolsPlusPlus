@@ -210,7 +210,6 @@ bool Packfile3::CanExtractSingleFile() const
 std::optional<std::span<u8>> Packfile3::ExtractSingleFile(s_view name, bool fullExtractFallback)
 {
     //Todo: Add single file extraction support for C&C packfiles
-
     //Check if single file extract is supported and the subfile exists
     u32 targetIndex = INVALID_HANDLE;
     if ((!CanExtractSingleFile() && !fullExtractFallback) || !Contains(name, targetIndex))

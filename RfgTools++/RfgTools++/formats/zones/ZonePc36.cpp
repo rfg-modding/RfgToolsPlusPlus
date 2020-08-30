@@ -16,11 +16,6 @@ void ZonePc36::Read(BinaryReader& reader)
     if (Header.Version != 36) //Only have seen and reversed version 36
         throw std::exception(("Error! Invalid zone file version. Expected 36, detected " + std::to_string(Header.Version)).c_str());
 
-    if (Name() == "p_terr01_03_12.rfgzone_pc")
-    {
-        auto a = 2;
-    }
-
     //Read relational data if it's useful
     //Todo: Determine district name string from hash
     hasRelationalData_ = (Header.DistrictFlags & 5) == 0; //Todo: Get a better breakdown of all zone flag values the game cares about

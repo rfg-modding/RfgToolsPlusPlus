@@ -1,5 +1,17 @@
 #pragma once
 #include "common/Typedefs.h"
+#include <sstream>
+
+//Todo: Put this in a utility namespace
+//Converts a value to a string with specific precision. Allows control of how many digits are present in the converted string
+template <typename T>
+string to_string_precise(const T Value, const int Precision = 1)
+{
+    std::ostringstream Out;
+    Out.precision(Precision);
+    Out << std::fixed << Value;
+    return Out.str();
+}
 
 struct Vec3
 {
@@ -50,5 +62,14 @@ struct Vec3
     Vec3 Normalize()
     {
         return *this / Magnitude();
+    }
+
+    string String()
+    {
+        return "{" 
+                    + to_string_precise(x, 2) + ", "
+                    + to_string_precise(y, 2) + ", "
+                    + to_string_precise(z, 2) + 
+                "}";
     }
 };

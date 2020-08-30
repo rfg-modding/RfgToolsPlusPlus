@@ -32,6 +32,7 @@ public:
     ZoneObject36* Self = nullptr;
     ZoneObjectNode36* Parent = nullptr;
     std::vector<ZoneObjectNode36> Children = {};
+    bool Selected = false;
 };
 
 //Zone format version 36. Found in rfgzone_pc and layer_pc files in RFG and RFGR

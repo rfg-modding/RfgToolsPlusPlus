@@ -19,7 +19,8 @@ enum class ZonePropertyType
     Vec3,
     DistrictFlags,
     NavpointData,
-    List
+    List,
+    Op
 };
 
 class IZoneProperty
