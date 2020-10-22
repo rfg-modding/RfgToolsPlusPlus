@@ -98,24 +98,48 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     u64 offset = 0;
     u64 offset2 = 0;
     u64 offset3 = 0;
+
+    //Header data size and compressed data size for C&C packfile
+    u64 offset4 = 0; //data size
+    u64 offset5 = 0; //compressed data size
+
     int i = 0;
     for (auto& entry : Entries)
     {
         offset += entry.CompressedDataSize;
         offset2 += entry.DataSize;
         offset3 += entry.DataSize;
+
+        offset4 += entry.DataSize;
+        offset5 += entry.CompressedDataSize;
+
         u64 pad = BinaryWriter::CalcAlign(offset, 2048);
         u64 pad2 = BinaryWriter::CalcAlign(offset2, 2048);
+        u64 pad3 = BinaryWriter::CalcAlign(offset5, 2048);
+
         if (i == Entries.size() - 1)
             pad = 0;
         if (i == Entries.size() - 1)
             pad2 = 0;
+        if (i == Entries.size() - 1)
+            pad3 = 0;
 
         offset += pad;
         offset2 += pad2;
+        if (!Condensed)
+            offset5 += pad3;
 
         totalDataSize += entry.DataSize;
         totalDataSize2 += entry.DataSize + pad;
+
+        if (Compressed && Condensed && i != Entries.size() - 1)
+        {
+            u32 alignPad = BinaryWriter::CalcAlign(offset4, 16);
+            offset4 += alignPad;
+        }
+        else if (!Condensed)
+            offset4 += BinaryWriter::CalcAlign(offset4, 2048);
+
         i++;
     }
 
@@ -421,19 +445,20 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
 
         curNameOffset += (u32)filename.size() + 1;
         curDataOffset += (u32)inFile.file_size();
+        totalDataSize += (u32)inFile.file_size();
+        totalNamesSize += (u32)filename.size() + 1;
 
         if (compressed && condensed && curSubfile != numSubfiles - 1)
         {
             u32 alignPad = BinaryWriter::CalcAlign(curDataOffset, 16);
+            u32 alignPad2 = BinaryWriter::CalcAlign(totalDataSize, 16);
             curDataOffset += alignPad;
             //header.DataSize += (u32)inFile.file_size();
-            totalDataSize += alignPad;
+            totalDataSize += alignPad2;
         }
         else if (!condensed)
             curDataOffset += out.CalcAlign(curDataOffset, 2048);
 
-        totalDataSize += (u32)inFile.file_size();
-        totalNamesSize += (u32)filename.size() + 1;
         curSubfile++;
     }
 
@@ -484,15 +509,35 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
         deflateStream.next_in = nullptr; //input.data();
         deflateStream.avail_out = 0; //(u32)output.size_bytes();
         deflateStream.next_out = nullptr; //output.data();
-        deflateInit(&deflateStream, Z_BEST_SPEED);
+        int result = deflateInit(&deflateStream, Z_BEST_SPEED);
+        if (result != Z_OK)
+        {
+            auto a = 2;
+        }
         //deflate(&deflateStream, Z_NO_FLUSH);
         //deflateEnd(&deflateStream);
 
         uLong lastOut = 0;
+        u64 tempDataOffset = 0;
         for (u32 i = 0; i < entries.size(); i++)
         {
             Packfile3EntryExt& entry = entries[i];
             std::vector<char> subFileData = File::ReadAllBytes(entry.FullPath);
+            tempDataOffset += subFileData.size();
+            //Add align(16) null bytes after uncompressed data. Not added to entry.DataSize but necessary for compression for some reason
+            if (i != entries.size() - 1)
+            {
+                u32 alignPad = BinaryWriter::CalcAlign(tempDataOffset, 16);
+                if (alignPad != 0)
+                {
+                    tempDataOffset += alignPad;
+                    for (u32 j = 0; j < alignPad; j++)
+                    {
+                        subFileData.push_back(0);
+                    }
+                }
+            }
+
             uLong deflateUpperBound = deflateBound(&deflateStream, subFileData.size());
             char* dest = new char[deflateUpperBound];
 
@@ -500,7 +545,11 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
             deflateStream.avail_in = subFileData.size();
             deflateStream.next_out = (Bytef*)dest;
             deflateStream.avail_out = deflateUpperBound;
-            deflate(&deflateStream, Z_FULL_FLUSH);
+            int result2 = deflate(&deflateStream, Z_SYNC_FLUSH);
+            if (result2 != Z_OK)
+            {
+                auto a = 2;
+            }
 
             uLong entryCompressedSize = deflateStream.total_out - lastOut;
             entry.Entry.CompressedDataSize = entryCompressedSize;
