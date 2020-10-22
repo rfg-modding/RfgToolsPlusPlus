@@ -4,7 +4,9 @@
 #include "common/string/String.h"
 #include "common/concurrency/Parallel.h"
 #include "compression/Compression.h"
+#include "hashes/Hash.h"
 #include <BinaryTools/BinaryReader.h>
+#include <BinaryTools/BinaryWriter.h>
 #include <filesystem>
 #include <iostream>
 #include <future>
@@ -89,6 +91,34 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     readMetadata_ = true;
     if (ownsReader)
         delete reader;
+
+    u64 totalDataSize = 0;
+    u64 totalDataSize2 = 0;
+    u64 offset = 0;
+    u64 offset2 = 0;
+    u64 offset3 = 0;
+    int i = 0;
+    for (auto& entry : Entries)
+    {
+        offset += entry.CompressedDataSize;
+        offset2 += entry.DataSize;
+        offset3 += entry.DataSize;
+        u64 pad = BinaryWriter::CalcAlign(offset, 2048);
+        u64 pad2 = BinaryWriter::CalcAlign(offset2, 2048);
+        if (i == Entries.size() - 1)
+            pad = 0;
+        if (i == Entries.size() - 1)
+            pad2 = 0;
+
+        offset += pad;
+        offset2 += pad2;
+
+        totalDataSize += entry.DataSize;
+        totalDataSize2 += entry.DataSize + pad;
+        i++;
+    }
+
+    auto a = 2;
 }
 
 void Packfile3::ExtractSubfiles(const string& outputPath)
@@ -335,6 +365,183 @@ void Packfile3::ReadAsmFiles()
 
         delete[] data.value().data();
     }
+}
+
+void Packfile3::Pack(const string& inputPath, const string& outputPath, bool compressed, bool condensed)
+{
+    if (!std::filesystem::exists(inputPath))
+    {
+        throw std::runtime_error("Input path: \"" + inputPath + "\" does not exist. Cannot pack!");
+    }
+    Path::CreatePath(std::filesystem::path(outputPath).parent_path().string());
+
+    //Data used by this function
+    struct Packfile3EntryExt
+    {
+        Packfile3Entry Entry;
+        string FullPath;
+    };
+    u32 curNameOffset = 0;
+    u32 curDataOffset = 0;
+    u32 totalDataSize = 0;
+    u32 totalNamesSize = 0;
+    Packfile3Header header;
+    BinaryWriter out(outputPath);
+    std::vector<string> filenames = {};
+    std::vector<Packfile3EntryExt> entries = {};
+
+    //Create entry for each file in input folder. Calc size/offset values
+    for (auto& inFile : std::filesystem::directory_iterator(inputPath))
+    {
+        string filename = inFile.path().filename().string();
+        filenames.push_back(filename);
+        entries.push_back
+        (
+            {
+                Packfile3Entry
+                {
+                    .NameOffset = curNameOffset,
+                    .DataOffset = curDataOffset,
+                    .NameHash = Hash::HashVolition(filename),
+                    .DataSize = (u32)inFile.file_size(),
+                    .CompressedDataSize = compressed ? 0 : 0xFFFFFFFF,
+                },
+                inFile.path().string()
+            }
+        );
+
+        curNameOffset += (u32)filename.size() + 1;
+        curDataOffset += (u32)inFile.file_size();
+        if (!condensed)
+            curDataOffset += out.CalcAlign(curDataOffset, 2048);
+
+        totalDataSize += (u32)inFile.file_size();
+        totalNamesSize += (u32)filename.size() + 1;
+    }
+
+    //Set packfile flags
+    u32 packfileFlags = 0;
+    if (compressed)
+        packfileFlags |= 1;
+    if (condensed)
+        packfileFlags |= 2;
+
+    //Todo: See if we can delay this to the end when we know all the header values
+    //Set header values that we know
+    header = Packfile3Header
+    {
+        .Signature = 0x51890ACE,
+        .Version = 3,
+        .ShortName = {0},
+        .PathName = {0},
+        .Flags = packfileFlags,
+        .NumberOfSubfiles = (u32)entries.size(),
+        .FileSize = 0, //Not yet known, set after writing file data. Includes padding
+        .EntryBlockSize = (u32)entries.size() * 28, //Doesn't include padding
+        .NameBlockSize = totalNamesSize, //Doesn't include padding
+        .DataSize = 0, //Includes padding
+        .CompressedDataSize = compressed ? 0 : 0xFFFFFFFF, //Not known, set to 0xFFFFFFFF if not compressed
+    };
+
+    //Calc data start and skip to it's location. We'll circle back and write header + entries at the end when he have all stats
+    u32 dataStart = 0;
+    dataStart += 2048; //Header size
+    dataStart += entries.size() * 28; //Each entry is 28 bytes
+    dataStart += out.CalcAlign(dataStart, 2048); //Align(2048) after end of entries
+    dataStart += totalNamesSize; //Filenames list
+    dataStart += out.CalcAlign(dataStart, 2048); //Align(2048) after end of file names
+    out.WriteNullBytes(dataStart - out.Position());
+
+    //Write subfile data
+    if (compressed && condensed) //WriteDataCompressedAndCondensed(writer.BaseStream);
+    {
+        //Todo: Try to use piecemeal deflate method with z_stream to compress data
+        //Todo: There's only one zlib header
+        //Todo: Each entry has a compressed size value, so can't just make one big buffer and compress it all at once
+
+        //u8* bulkUncompressedData = new u8[totalDataSize];
+        //u64 bulkOffset = 0;
+        //for (auto& entry : entries)
+        //{
+        //    //Read subfile data and pack it into a big buffer
+        //    std::vector<char> subFileData = File::ReadAllBytes(entry.FullPath);
+        //    memcpy(bulkUncompressedData + bulkOffset, subFileData.data(), subFileData.size());
+        //    bulkOffset += subFileData.size();
+        //}
+
+        //////Todo: See if this method is correct
+        //////Todo: See if theres a less ram intensive way of doing this. Maybe by repeatedly updating z_stream and doing in steps
+        //////Compress the whole buffer at once and write to file
+        ////Compression::DeflateResult compressedData = Compression::Deflate({ bulkUncompressedData, totalDataSize });
+        ////out.WriteFromMemory(compressedData.Buffer, compressedData.DataSize);
+        ////out.Flush();
+
+        ////entry.
+    }
+    else if (compressed) //WriteDataCompressed(writer.BaseStream);
+    {
+        u32 i = 0;
+        for (auto& entry : entries)
+        {
+            //Read subfile data and compress it
+            std::vector<char> subFileData = File::ReadAllBytes(entry.FullPath);
+            Compression::DeflateResult compressedData = Compression::Deflate({ (u8*)subFileData.data(), subFileData.size() });
+            
+            //Write compressed data to file
+            out.WriteFromMemory(compressedData.Buffer, compressedData.DataSize);
+            out.Flush();
+
+            //Update data sizes and free compressed data buffer
+            entry.Entry.CompressedDataSize = (u32)compressedData.DataSize;
+            header.CompressedDataSize += (u32)compressedData.DataSize;
+            header.DataSize += entry.Entry.DataSize;
+            delete compressedData.Buffer;
+
+            //Add alignment padding for all except final entry
+            if (i != entries.size() - 1)
+            {
+                u32 padSize = (u32)out.Align(2048);
+                u32 uncompressedPad = (u32)BinaryWriter::CalcAlign(header.DataSize, 2048);
+                header.DataSize += uncompressedPad; //header.DataSize is calculated the same way even when compressed
+                header.CompressedDataSize += padSize;
+            }
+            i++;
+        }
+    }
+    else //WriteDataDefault(writer, condensed);
+    {
+        u32 i = 0;
+        for (auto& entry : entries)
+        {
+            std::vector<char> subFileData = File::ReadAllBytes(entry.FullPath);
+            out.WriteFromMemory(subFileData.data(), subFileData.size());
+            header.DataSize += entry.Entry.DataSize;
+
+            //There's no padding bytes if the packfile is condensed or after the final entry
+            if (!condensed && i != entries.size() - 1)
+                header.DataSize += (u32)out.Align(2048);
+
+            i++;
+        }
+    }
+
+    //Write header data
+    header.FileSize = (u32)out.Length();
+    out.SeekBeg(0);
+    header.WriteToBinary(out);
+
+    for (auto& entry : entries)
+    {
+        entry.Entry.WriteToBinary(out);
+    }
+    out.Align(2048);
+
+    for (auto& filename : filenames)
+    {
+        out.WriteNullTerminatedString(filename);
+    }
+    out.Align(2048);
+    out.Flush();
 }
 
 //Fix data offsets. Values in packfile not always valid.

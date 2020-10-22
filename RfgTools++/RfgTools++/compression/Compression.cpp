@@ -19,4 +19,19 @@ namespace Compression
 		inflate(&inflateStream, Z_NO_FLUSH);
 		inflateEnd(&inflateStream);
     }
+
+	DeflateResult Deflate(std::span<u8> input)
+	{
+		uLong deflateUpperBound = compressBound(input.size_bytes());
+		uLongf destLen = deflateUpperBound;
+		char* dest = new char[deflateUpperBound];
+
+		compress2((Bytef*)dest, &destLen, (Bytef*)input.data(), input.size_bytes(), Z_BEST_SPEED);
+		return DeflateResult
+		{
+			.Buffer = (u8*)dest,
+			.BufferSize = deflateUpperBound,
+			.DataSize = destLen
+		};
+	}
 }

@@ -59,6 +59,8 @@ public:
             delete[] buffer_.data();
     }
 
+    static void Pack(const string& inputPath, const string& outputPath, bool compressed, bool condensed);
+
     Packfile3Header Header;
     bool Compressed = false;
     bool Condensed = false;
