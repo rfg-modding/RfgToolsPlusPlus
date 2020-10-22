@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <iostream>
 #include <future>
+#include <zlib.h>
 
 Packfile3::Packfile3(const string& path) : path_(path), packfileSourceType(DataSource::File)
 {
@@ -390,11 +391,19 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
     std::vector<string> filenames = {};
     std::vector<Packfile3EntryExt> entries = {};
 
+    //Todo: Come up with a less flimsy way of handling this. Could get incorrect value if new file added to folder at inopportune moment
+    //Todo: Maybe create a std::vector of file paths first, only using one directory_iterator
+    u32 numSubfiles = 0;
+    for (auto& inFile : std::filesystem::directory_iterator(inputPath))
+        numSubfiles++;
+
     //Create entry for each file in input folder. Calc size/offset values
+    u32 curSubfile = 0;
     for (auto& inFile : std::filesystem::directory_iterator(inputPath))
     {
         string filename = inFile.path().filename().string();
         filenames.push_back(filename);
+
         entries.push_back
         (
             {
@@ -412,11 +421,20 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
 
         curNameOffset += (u32)filename.size() + 1;
         curDataOffset += (u32)inFile.file_size();
-        if (!condensed)
+
+        if (compressed && condensed && curSubfile != numSubfiles - 1)
+        {
+            u32 alignPad = BinaryWriter::CalcAlign(curDataOffset, 16);
+            curDataOffset += alignPad;
+            //header.DataSize += (u32)inFile.file_size();
+            totalDataSize += alignPad;
+        }
+        else if (!condensed)
             curDataOffset += out.CalcAlign(curDataOffset, 2048);
 
         totalDataSize += (u32)inFile.file_size();
         totalNamesSize += (u32)filename.size() + 1;
+        curSubfile++;
     }
 
     //Set packfile flags
@@ -439,7 +457,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
         .FileSize = 0, //Not yet known, set after writing file data. Includes padding
         .EntryBlockSize = (u32)entries.size() * 28, //Doesn't include padding
         .NameBlockSize = totalNamesSize, //Doesn't include padding
-        .DataSize = 0, //Includes padding
+        .DataSize = (compressed && condensed) ? totalDataSize : 0, //Includes padding
         .CompressedDataSize = compressed ? 0 : 0xFFFFFFFF, //Not known, set to 0xFFFFFFFF if not compressed
     };
 
@@ -458,6 +476,64 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
         //Todo: Try to use piecemeal deflate method with z_stream to compress data
         //Todo: There's only one zlib header
         //Todo: Each entry has a compressed size value, so can't just make one big buffer and compress it all at once
+        z_stream deflateStream;
+        deflateStream.zalloc = Z_NULL;
+        deflateStream.zfree = Z_NULL;
+        deflateStream.opaque = Z_NULL;
+        deflateStream.avail_in = 0; //(u32)input.size_bytes();
+        deflateStream.next_in = nullptr; //input.data();
+        deflateStream.avail_out = 0; //(u32)output.size_bytes();
+        deflateStream.next_out = nullptr; //output.data();
+        deflateInit(&deflateStream, Z_BEST_SPEED);
+        //deflate(&deflateStream, Z_NO_FLUSH);
+        //deflateEnd(&deflateStream);
+
+        uLong lastOut = 0;
+        for (u32 i = 0; i < entries.size(); i++)
+        {
+            Packfile3EntryExt& entry = entries[i];
+            std::vector<char> subFileData = File::ReadAllBytes(entry.FullPath);
+            uLong deflateUpperBound = deflateBound(&deflateStream, subFileData.size());
+            char* dest = new char[deflateUpperBound];
+
+            deflateStream.next_in = (Bytef*)subFileData.data();
+            deflateStream.avail_in = subFileData.size();
+            deflateStream.next_out = (Bytef*)dest;
+            deflateStream.avail_out = deflateUpperBound;
+            deflate(&deflateStream, Z_FULL_FLUSH);
+
+            uLong entryCompressedSize = deflateStream.total_out - lastOut;
+            entry.Entry.CompressedDataSize = entryCompressedSize;
+            header.CompressedDataSize += entryCompressedSize;
+            //header.DataSize += entry.Entry.DataSize;
+            //if (i != entries.size() - 1)
+            //{
+            //    u32 uncompressedPad = (u32)BinaryWriter::CalcAlign(header.DataSize, 2048);
+            //    header.DataSize += uncompressedPad; //header.DataSize is calculated the same way even when compressed
+            //}
+
+            out.WriteFromMemory(dest, entryCompressedSize);
+            out.Flush();
+            lastOut = deflateStream.total_out;
+            delete[] dest;
+        }
+        deflateEnd(&deflateStream);
+
+        //DeflateResult Deflate(std::span<u8> input)
+        //{
+        //    uLong deflateUpperBound = compressBound(input.size_bytes());
+        //    uLongf destLen = deflateUpperBound;
+        //    char* dest = new char[deflateUpperBound];
+
+        //    compress2((Bytef*)dest, &destLen, (Bytef*)input.data(), input.size_bytes(), Z_BEST_SPEED);
+        //    return DeflateResult
+        //    {
+        //        .Buffer = (u8*)dest,
+        //        .BufferSize = deflateUpperBound,
+        //        .DataSize = destLen
+        //    };
+        //}
+
 
         //u8* bulkUncompressedData = new u8[totalDataSize];
         //u64 bulkOffset = 0;
@@ -495,7 +571,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
             entry.Entry.CompressedDataSize = (u32)compressedData.DataSize;
             header.CompressedDataSize += (u32)compressedData.DataSize;
             header.DataSize += entry.Entry.DataSize;
-            delete compressedData.Buffer;
+            delete[] compressedData.Buffer;
 
             //Add alignment padding for all except final entry
             if (i != entries.size() - 1)
