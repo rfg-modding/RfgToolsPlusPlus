@@ -5,6 +5,7 @@
 #include "RfgTools++/formats/packfiles/Packfile3.h"
 #include <iostream>
 #include <RfgTools++\formats\meshes\MeshDataBlock.h>
+#include <BinaryTools\BinaryWriter.h>
 
 int main()
 {
@@ -55,10 +56,10 @@ int main()
         unsigned int destruction_datasize = 0;
     };
 
-    string cpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l1.vpp_pc/Unpack/0h_c2337.str2_pc/0202tower_guard.cchk_pc";
-    string gpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l1.vpp_pc/Unpack/0h_c2337.str2_pc/0202tower_guard.gchk_pc";
-    //string cpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l0.vpp_pc/Unpack/0h_c2016.str2_pc/0101landing_pad_small_a.cchk_pc";
-    //string gpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l0.vpp_pc/Unpack/0h_c2016.str2_pc/0101landing_pad_small_a.gchk_pc";
+    //string cpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l1.vpp_pc/Unpack/0h_c2337.str2_pc/0202tower_guard.cchk_pc";
+    //string gpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l1.vpp_pc/Unpack/0h_c2337.str2_pc/0202tower_guard.gchk_pc";
+    string cpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l0.vpp_pc/Unpack/0h_c2016.str2_pc/0101landing_pad_small_a.cchk_pc";
+    string gpuFilePath = "G:/RFG Unpack/data/Unpack/terr01_l0.vpp_pc/Unpack/0h_c2016.str2_pc/0101landing_pad_small_a.gchk_pc";
 
     BinaryReader cpuFile(cpuFilePath);
     BinaryReader gpuFile(gpuFilePath);
@@ -219,7 +220,65 @@ int main()
 
     std::cout << "Position at expected start of first destroyable: " << cpuFile.Position() << "\n";
 
-
+    enum material_shape_type
+    {
+        INVALID_MATERIAL_EVENT_SHAPE_TYPE = 0xFFFFFFFF,
+        MATERIAL_EVENT_SHAPE_SOLID = 0x0,
+        MATERIAL_EVENT_SHAPE_SHEET = 0x1,
+        MATERIAL_EVENT_SHAPE_POLE = 0x2,
+        MATERIAL_EVENT_SHAPE_FENCE = 0x3,
+        MATERIAL_EVENT_SHAPE_CATWALK = 0x4,
+        NUM_MATERIAL_EVENT_SHAPE_TYPES = 0x5,
+    };
+    struct rl_color_float
+    {
+        float red;
+        float green;
+        float blue;
+        float alpha;
+    };
+    struct base_event_candidate
+    {
+        void* vfptr;//base_event_candidateVtbl* vfptr;
+        float event_size[3];
+    };
+    struct __declspec(align(4)) gust_effect_info
+    {
+        unsigned int effect;
+        float fade_time;
+        float percent_chance;
+        bool near_far;
+    };
+    struct rfg_effect_material
+    {
+        char name[32];
+        material_shape_type default_shape_type;
+        rl_color_float effect_tint;
+        bool effect_tint_enabled;
+        base_event_candidate* effect_candidate[13];
+        int blast_decal;
+        unsigned int trail_effects[2];
+        int num_gust_effects;
+        gust_effect_info gust_effects[10];
+        bool driving_do_tracks;
+        unsigned int driving_front_effect;
+        unsigned int driving_rear_effect;
+    };
+    struct rfg_physical_material
+    {
+        char name[32];
+        unsigned int name_checksum;
+        char suffix[3];
+        unsigned int suffix_checksum;
+        u32 base_props_name_ptr; //char* base_props_name;
+        float density;
+        float brittleness;
+        float restitution;
+        float friction;
+        unsigned int link_strength;
+        u32 effect_material_ptr; //rfg_effect_material* effect_material;
+        unsigned int flags;
+    };
     struct vector
     {
         f32 x;
@@ -418,8 +477,27 @@ int main()
     }
 
     //Read vertex and index data
-        auto c = 2;
+
+
+    //Output submeshes to an obj file
+    for (u32 i = 0; i < meshData.NumSubmeshes; i++)
+    {
+        SubmeshData& submesh = meshData.Submeshes[i];
+
     }
+
+    BinaryWriter writer("G:\\Rfg Mesh Hack extraction folder\\0101landing_pad_small_a__object_positions.bin");
+    for (auto& destroyable : destroyables)
+    {
+        for (auto& subpiece : destroyable.subpieces)
+        {
+            writer.WriteFloat(subpiece.pos.x);
+            writer.WriteFloat(subpiece.pos.y);
+            writer.WriteFloat(subpiece.pos.z);
+        }
+    }
+
+    auto d = 2;
 
     return 0;
 }
