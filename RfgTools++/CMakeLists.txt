@@ -12,6 +12,8 @@ file(GLOB_RECURSE SOURCES
     # TODO: Hook this up as a static lib once it's got a CMakeLists.txt. For now this works
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/*.cpp
+
+    # Manually add zlib files since we're using a super old version (1.2.3) to attempt RFG compat
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/zlib.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/zlib.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/adler32.c
@@ -32,6 +34,9 @@ file(GLOB_RECURSE SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/inftrees.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/trees.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/trees.h
+
+    # Add tinyxml2 files
+    ${CMAKE_SOURCE_DIR}/dependencies/tinyxml2/tinyxml2.cpp
 )
 
 # Add source to this project's static library (.lib)
@@ -43,6 +48,7 @@ target_include_directories(RfgTools++ SYSTEM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/
     ${CMAKE_CURRENT_SOURCE_DIR}/RfgTools++/
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/
+    ${CMAKE_SOURCE_DIR}/Dependencies/tinyxml2
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
 )
 

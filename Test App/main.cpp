@@ -9,8 +9,8 @@ int main()
 {
     /*Unpacking test*/
 
-    //string inputPath = "G:\\GOG\\Games\\Red Faction Guerrilla Re-Mars-tered\\data\\anims.vpp_pc";
-    ////string inputPath = "G:\\RFG Unpack 2\\CppToolOutput\\Unpack\\vehicles_r\\mar_raider1.ccar_pc.str2_pc";
+    //string inputPath = "G:\\GOG\\Games\\Red Faction Guerrilla Re-Mars-tered\\data\\humans.vpp_pc";
+    //string inputPath = "G:\\RFG Unpack 2\\CppToolOutput\\Unpack\\humans\\rfg_PC.str2_pc";
     //string outputPath = "G:/RFG Unpack 2/CppToolOutput/Unpack/";
 
     //std::cout << "inputPath: \"" << inputPath << "\"\n";
@@ -46,10 +46,14 @@ int main()
 
     std::cout << "Starting packing tests...\n";
 
-    string packInputPath = "G:\\RFG Unpack 2\\CppToolOutput\\Unpack\\anims\\";
-    string packOutputPath = "G:/RFG Unpack 2/CppToolOutput/Repack/anims.vpp_pc";
-    //string packInputPath = "G:\\RFG Unpack 2\\CppToolOutput\\Unpack\\mar_raider1.ccar_pc\\";
-    //string packOutputPath = "G:/RFG Unpack 2/CppToolOutput/Repack/mar_raider1.ccar_pc.str2_pc";
+    //string packInputPath = "G:\\RFG Unpack 2\\CppToolOutput\\Unpack\\anims\\";
+    //string packOutputPath = "G:/RFG Unpack 2/CppToolOutput/Repack/anims.vpp_pc";
+
+    string packInputPath = "C:\\Users\\moneyl\\source\\repos\\_RFG Stuff\\Rfg Tools Testing\\rfg_PC_manly\\";
+    string packOutputPath = "C:\\Users\\moneyl\\source\\repos\\_RFG Stuff\\Rfg Tools Testing\\rfg_PC_manly.str2_pc";
+
+    //string packInputPath = "G:\\RFG Unpack 2\\CppToolOutput\\Unpack\\rfg_PC\\";
+    //string packOutputPath = "G:/RFG Unpack 2/CppToolOutput/Repack/rfg_PC.str2_pc";
 
     std::cout << "inputPath: \"" << packInputPath << "\"\n";
     std::cout << "outputPath: \"" << packOutputPath << "\"\n";

@@ -5,6 +5,7 @@
 #include "common/concurrency/Parallel.h"
 #include "compression/Compression.h"
 #include "hashes/Hash.h"
+#include <tinyxml2.h>
 #include <BinaryTools/BinaryReader.h>
 #include <BinaryTools/BinaryWriter.h>
 #include <filesystem>
@@ -257,6 +258,52 @@ void Packfile3::WriteStreamsFile(const string& outputPath)
     
 }
 
+void Packfile3::ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths)
+{
+    //Todo: Add actual logging and error handling. This is lame
+    //Make sure the file exists and open it
+    if (!std::filesystem::exists(inputPath + "\\@streams.xml"))
+        throw std::runtime_error("Failed to find @streams.xml file for .str2_pc file.");
+
+    tinyxml2::XMLDocument streams;
+    streams.LoadFile((inputPath + "\\@streams.xml").c_str());
+
+    //Get <streams> block
+    tinyxml2::XMLElement* streamsBlock = streams.FirstChildElement("streams");
+    if (!streamsBlock)
+        throw std::runtime_error("Couldn't find <streams> block in @streams.xml file.");
+
+    //Read attributes from <streams> block
+    const tinyxml2::XMLAttribute* compressedAttrib = streamsBlock->FindAttribute("compressed");
+    const tinyxml2::XMLAttribute* condensedAttrib = streamsBlock->FindAttribute("condensed");
+    if (!compressedAttrib)
+        throw std::runtime_error("Couldn't find attribute 'compressed' on <stream> block in @streams.xml");
+    if (!condensedAttrib)
+        throw std::runtime_error("Couldn't find attribute 'condensed' on <stream> block in @streams.xml");
+
+    //Set flags from attributes
+    compressed = compressedAttrib->Value() == string("True") ? true : false;
+    condensed = condensedAttrib->Value() == string("True") ? true : false;
+
+    //Read entries from <streams> block
+    tinyxml2::XMLElement* entryElement = streamsBlock->FirstChildElement("entry");
+    while (entryElement)
+    {
+        //Note: The value of the element is also a name. Using the attrib just in case there's names with restricted xml characters which may get mangled as an element value
+        //Read name attribute from <entry> block
+        const tinyxml2::XMLAttribute* nameAttrib = entryElement->FindAttribute("name");
+        if (!compressedAttrib)
+            throw std::runtime_error("Couldn't find attribute 'name' on <entry> block in @streams.xml");
+
+        //Create new entry from name attrib
+        string entryName(nameAttrib->Value());
+        subfilePaths.push_back(std::filesystem::directory_entry(std::filesystem::path(inputPath + "\\" + entryName)));
+
+        //Move to next entry
+        entryElement = entryElement->NextSiblingElement("entry");
+    }
+}
+
 bool Packfile3::CanExtractSingleFile() const
 {
     return !(Compressed && Condensed);
@@ -414,16 +461,32 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
     BinaryWriter out(outputPath);
     std::vector<string> filenames = {};
     std::vector<Packfile3EntryExt> entries = {};
+    std::vector<std::filesystem::directory_entry> subfilePaths = {};
+    
+    string extension = Path::GetExtension(outputPath);
+    bool usingStreamsFile = extension == ".str2_pc";
+    bool isStr2 = extension == ".str2_pc";
+    if (usingStreamsFile)
+    {
+        ReadStreamsFile(inputPath, compressed, condensed, subfilePaths);
+    }
 
-    //Todo: Come up with a less flimsy way of handling this. Could get incorrect value if new file added to folder at inopportune moment
-    //Todo: Maybe create a std::vector of file paths first, only using one directory_iterator
-    u32 numSubfiles = 0;
-    for (auto& inFile : std::filesystem::directory_iterator(inputPath))
-        numSubfiles++;
+    //Get list of subfile paths once. Expects that they won't change/move until packing is complete
+    //Done this way so we can easily swap this out with a list from a @streams.xml file
+    if (!usingStreamsFile)
+    {
+        for (auto& subfile : std::filesystem::directory_iterator(inputPath))
+        {
+            if (subfile.path().filename().string() == "@streams.xml")
+                continue;
+
+            subfilePaths.push_back(subfile);
+        }
+    }
 
     //Create entry for each file in input folder. Calc size/offset values
     u32 curSubfile = 0;
-    for (auto& inFile : std::filesystem::directory_iterator(inputPath))
+    for (auto& inFile : subfilePaths)
     {
         string filename = inFile.path().filename().string();
         filenames.push_back(filename);
@@ -448,7 +511,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
         totalDataSize += (u32)inFile.file_size();
         totalNamesSize += (u32)filename.size() + 1;
 
-        if (compressed && condensed && curSubfile != numSubfiles - 1)
+        if (compressed && condensed && curSubfile != subfilePaths.size() - 1 && !isStr2)
         {
             u32 alignPad = BinaryWriter::CalcAlign(curDataOffset, 16);
             u32 alignPad2 = BinaryWriter::CalcAlign(totalDataSize, 16);
@@ -509,7 +572,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
         deflateStream.next_in = nullptr; //input.data();
         deflateStream.avail_out = 0; //(u32)output.size_bytes();
         deflateStream.next_out = nullptr; //output.data();
-        int result = deflateInit(&deflateStream, Z_BEST_SPEED);
+        int result = deflateInit(&deflateStream, isStr2 ? Z_BEST_COMPRESSION : Z_BEST_SPEED);
         if (result != Z_OK)
         {
             auto a = 2;
@@ -525,7 +588,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
             std::vector<char> subFileData = File::ReadAllBytes(entry.FullPath);
             tempDataOffset += subFileData.size();
             //Add align(16) null bytes after uncompressed data. Not added to entry.DataSize but necessary for compression for some reason
-            if (i != entries.size() - 1)
+            if (i != entries.size() - 1 && !isStr2)
             {
                 u32 alignPad = BinaryWriter::CalcAlign(tempDataOffset, 16);
                 if (alignPad != 0)
