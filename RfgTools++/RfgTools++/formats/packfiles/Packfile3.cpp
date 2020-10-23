@@ -31,12 +31,9 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
             reader = new BinaryReader(buffer_);
     }
 
-    u64 pos_1 = reader->Position();
     //Read header directly into memory
     reader->ReadToMemory(&Header, sizeof(Packfile3Header));
-    auto pos_2 = reader->Position();
     reader->Align(2048); //Align to entries block
-    auto pos_3 = reader->Position();
 
     //Basic header validation
     if (Header.Signature != 1367935694)
@@ -44,7 +41,6 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     if (Header.Version != 3)
         throw std::exception(("Error! Invalid packfile version. Expected 3, detected " + std::to_string(Header.Version)).c_str());
 
-    auto pos_4 = reader->Position();
     //Set flag shorthand vars
     Compressed = (Header.Flags & PACKFILE_FLAG_COMPRESSED) == PACKFILE_FLAG_COMPRESSED;
     Condensed = (Header.Flags & PACKFILE_FLAG_CONDENSED) == PACKFILE_FLAG_CONDENSED;
@@ -57,26 +53,18 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     //Reserve enough space in the vector for the entries
     Entries.reserve(Header.NumberOfSubfiles);
 
-    auto pos = reader->Position();
-
     //Read entries
     for (u32 i = 0; i < Header.NumberOfSubfiles; i++)
     {
-        pos = reader->Position();
-
         Packfile3Entry& entry = Entries.emplace_back();
         entry.Read(*reader);
     }
-    auto pos2 = reader->Position();
     reader->Align(2048); //Align to reach filename block
-    auto pos3 = reader->Position();
 
     //Read filenames into heap buffer
     filenamesBuffer_ = new u8[Header.NameBlockSize];
     reader->ReadToMemory(filenamesBuffer_, Header.NameBlockSize);
-    auto pos4 = reader->Position();
     reader->Align(2048); //Align to reach next data block start
-    auto pos5 = reader->Position();
     
     //Make array of pointers to each string for easy access. Actual string data is still held in single heap buffer
     //Note: Tested using std::string and it took about twice as long due to copying + more allocating. Keep in mind if ever want to switch this to use std::string
@@ -93,58 +81,6 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     readMetadata_ = true;
     if (ownsReader)
         delete reader;
-
-    u64 totalDataSize = 0;
-    u64 totalDataSize2 = 0;
-    u64 offset = 0;
-    u64 offset2 = 0;
-    u64 offset3 = 0;
-
-    //Header data size and compressed data size for C&C packfile
-    u64 offset4 = 0; //data size
-    u64 offset5 = 0; //compressed data size
-
-    int i = 0;
-    for (auto& entry : Entries)
-    {
-        offset += entry.CompressedDataSize;
-        offset2 += entry.DataSize;
-        offset3 += entry.DataSize;
-
-        offset4 += entry.DataSize;
-        offset5 += entry.CompressedDataSize;
-
-        u64 pad = BinaryWriter::CalcAlign(offset, 2048);
-        u64 pad2 = BinaryWriter::CalcAlign(offset2, 2048);
-        u64 pad3 = BinaryWriter::CalcAlign(offset5, 2048);
-
-        if (i == Entries.size() - 1)
-            pad = 0;
-        if (i == Entries.size() - 1)
-            pad2 = 0;
-        if (i == Entries.size() - 1)
-            pad3 = 0;
-
-        offset += pad;
-        offset2 += pad2;
-        if (!Condensed)
-            offset5 += pad3;
-
-        totalDataSize += entry.DataSize;
-        totalDataSize2 += entry.DataSize + pad;
-
-        if (Compressed && Condensed && i != Entries.size() - 1)
-        {
-            u32 alignPad = BinaryWriter::CalcAlign(offset4, 16);
-            offset4 += alignPad;
-        }
-        else if (!Condensed)
-            offset4 += BinaryWriter::CalcAlign(offset4, 2048);
-
-        i++;
-    }
-
-    auto a = 2;
 }
 
 void Packfile3::ExtractSubfiles(const string& outputPath)
@@ -559,7 +495,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
     out.WriteNullBytes(dataStart - out.Position());
 
     //Write subfile data
-    if (compressed && condensed) //WriteDataCompressedAndCondensed(writer.BaseStream);
+    if (compressed && condensed)
     {
         //Todo: Try to use piecemeal deflate method with z_stream to compress data
         //Todo: There's only one zlib header
@@ -568,17 +504,11 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
         deflateStream.zalloc = Z_NULL;
         deflateStream.zfree = Z_NULL;
         deflateStream.opaque = Z_NULL;
-        deflateStream.avail_in = 0; //(u32)input.size_bytes();
-        deflateStream.next_in = nullptr; //input.data();
-        deflateStream.avail_out = 0; //(u32)output.size_bytes();
-        deflateStream.next_out = nullptr; //output.data();
-        int result = deflateInit(&deflateStream, isStr2 ? Z_BEST_COMPRESSION : Z_BEST_SPEED);
-        if (result != Z_OK)
-        {
-            auto a = 2;
-        }
-        //deflate(&deflateStream, Z_NO_FLUSH);
-        //deflateEnd(&deflateStream);
+        deflateStream.avail_in = 0;
+        deflateStream.next_in = nullptr;
+        deflateStream.avail_out = 0;
+        deflateStream.next_out = nullptr;
+        deflateInit(&deflateStream, isStr2 ? Z_BEST_COMPRESSION : Z_BEST_SPEED);
 
         uLong lastOut = 0;
         u64 tempDataOffset = 0;
@@ -608,21 +538,11 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
             deflateStream.avail_in = subFileData.size();
             deflateStream.next_out = (Bytef*)dest;
             deflateStream.avail_out = deflateUpperBound;
-            int result2 = deflate(&deflateStream, Z_SYNC_FLUSH);
-            if (result2 != Z_OK)
-            {
-                auto a = 2;
-            }
+            deflate(&deflateStream, Z_SYNC_FLUSH);
 
             uLong entryCompressedSize = deflateStream.total_out - lastOut;
             entry.Entry.CompressedDataSize = entryCompressedSize;
             header.CompressedDataSize += entryCompressedSize;
-            //header.DataSize += entry.Entry.DataSize;
-            //if (i != entries.size() - 1)
-            //{
-            //    u32 uncompressedPad = (u32)BinaryWriter::CalcAlign(header.DataSize, 2048);
-            //    header.DataSize += uncompressedPad; //header.DataSize is calculated the same way even when compressed
-            //}
 
             out.WriteFromMemory(dest, entryCompressedSize);
             out.Flush();
@@ -630,43 +550,8 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
             delete[] dest;
         }
         deflateEnd(&deflateStream);
-
-        //DeflateResult Deflate(std::span<u8> input)
-        //{
-        //    uLong deflateUpperBound = compressBound(input.size_bytes());
-        //    uLongf destLen = deflateUpperBound;
-        //    char* dest = new char[deflateUpperBound];
-
-        //    compress2((Bytef*)dest, &destLen, (Bytef*)input.data(), input.size_bytes(), Z_BEST_SPEED);
-        //    return DeflateResult
-        //    {
-        //        .Buffer = (u8*)dest,
-        //        .BufferSize = deflateUpperBound,
-        //        .DataSize = destLen
-        //    };
-        //}
-
-
-        //u8* bulkUncompressedData = new u8[totalDataSize];
-        //u64 bulkOffset = 0;
-        //for (auto& entry : entries)
-        //{
-        //    //Read subfile data and pack it into a big buffer
-        //    std::vector<char> subFileData = File::ReadAllBytes(entry.FullPath);
-        //    memcpy(bulkUncompressedData + bulkOffset, subFileData.data(), subFileData.size());
-        //    bulkOffset += subFileData.size();
-        //}
-
-        //////Todo: See if this method is correct
-        //////Todo: See if theres a less ram intensive way of doing this. Maybe by repeatedly updating z_stream and doing in steps
-        //////Compress the whole buffer at once and write to file
-        ////Compression::DeflateResult compressedData = Compression::Deflate({ bulkUncompressedData, totalDataSize });
-        ////out.WriteFromMemory(compressedData.Buffer, compressedData.DataSize);
-        ////out.Flush();
-
-        ////entry.
     }
-    else if (compressed) //WriteDataCompressed(writer.BaseStream);
+    else if (compressed)
     {
         u32 i = 0;
         for (auto& entry : entries)
@@ -696,7 +581,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
             i++;
         }
     }
-    else //WriteDataDefault(writer, condensed);
+    else
     {
         u32 i = 0;
         for (auto& entry : entries)
