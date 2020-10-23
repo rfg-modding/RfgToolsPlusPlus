@@ -7,6 +7,7 @@
 #include <vector>
 #include <span>
 #include <optional>
+#include <filesystem>
 
 enum class DataSource
 {
@@ -59,6 +60,8 @@ public:
             delete[] buffer_.data();
     }
 
+    static void Pack(const string& inputPath, const string& outputPath, bool compressed, bool condensed);
+
     Packfile3Header Header;
     bool Compressed = false;
     bool Condensed = false;
@@ -75,6 +78,8 @@ private:
     void ExtractCompressed(const string& outputPath, BinaryReader& reader);
     void ExtractDefault(const string& outputPath, BinaryReader& reader);
     void WriteStreamsFile(const string& outputPath);
+
+    static void ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths);
 
     std::span<u8> buffer_ = {};
     string path_ = {};
