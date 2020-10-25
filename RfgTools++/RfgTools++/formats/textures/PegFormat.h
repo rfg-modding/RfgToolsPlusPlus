@@ -1,7 +1,7 @@
 #pragma once
 #include "common/Typedefs.h"
 
-enum PegFormat : u16
+enum class PegFormat : u16
 {
     None = 0,
     BM_1555 = 1,
@@ -26,4 +26,4 @@ enum PegFormat : u16
     XBOX2_DXT5A = 602,
     XBOX2_CTX1 = 603,
     PS3_DXT5N = 700,
-}
+};

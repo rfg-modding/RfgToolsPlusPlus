@@ -1,7 +1,7 @@
 #pragma once
 #include "common/Typedefs.h"
 
-enum TextureFlags : u16
+enum class TextureFlags : u16
 {
     None = 0, // 0
     Unknown0 = 1 << 0, // 1
@@ -20,4 +20,4 @@ enum TextureFlags : u16
     Unknown13 = 1 << 13, // 8192
     Unknown14 = 1 << 14, // 16384
     Unknown15 = 1 << 15, // 32768
-}
+};
