@@ -35,7 +35,8 @@ void PegFile10::Write(BinaryWriter& cpuFile, BinaryWriter& gpuFile)
 
 void PegFile10::ReadTextureData(BinaryReader& gpuFile, PegEntry10& entry)
 {
-    if (!headerRead_)
+    //If header not read or raw data read previously return
+    if (!headerRead_ || !entry.RawData.empty())
         return;
 
     gpuFile.SeekBeg(0);
