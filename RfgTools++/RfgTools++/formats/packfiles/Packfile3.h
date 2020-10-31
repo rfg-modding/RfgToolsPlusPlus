@@ -21,6 +21,12 @@ enum class DataSource
 #define INVALID_HANDLE 0xFFFFFFFF
 
 class BinaryReader;
+//Essentially a labelled span. Used for files stored in memory.
+struct MemoryFile
+{
+    string Filename;
+    std::span<u8> Bytes;
+};
 
 //Packfile version 3 used in RFG and RFGR
 class Packfile3
@@ -34,8 +40,13 @@ public:
     Packfile3() = delete;
 
     //Functions which need access to the file
+    //Reads header, entries, and filenames from packfile
     void ReadMetadata(BinaryReader* reader = nullptr);
+    //Extracts subfiles to outputPath
     void ExtractSubfiles(const string& outputPath);
+    //Extracts subfiles in memory and returns it
+    std::vector<MemoryFile> ExtractSubfiles();
+
     //Attempts to extract a subfiles data as a raw byte array. User must free memory once they're done with it
     //Handles decompressing compressed subfiles. Currently does not work on packfiles with both the compressed & condensed flags
     //If 'fullExtractFallback' is true it'll do a full extract and pull the requested file. This is very inefficient and so you

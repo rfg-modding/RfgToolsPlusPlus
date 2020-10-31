@@ -96,7 +96,7 @@ void Packfile3::ExtractSubfiles(const string& outputPath)
     if (!readMetadata_)
         ReadMetadata(reader);
 
-    if (std::filesystem::file_size(path_) <= 2048)
+    if (reader->Length() <= 2048)
         return;
 
     //Seek to data block
@@ -124,11 +124,44 @@ void Packfile3::ExtractSubfiles(const string& outputPath)
     delete reader;
 }
 
+std::vector<MemoryFile> Packfile3::ExtractSubfiles()
+{
+    //Todo: Support other formats
+    //For now this only supports C&C files
+    if(!(Compressed && Condensed))
+        return std::vector<MemoryFile>();
+
+    //Create reader
+    BinaryReader* reader = nullptr;
+    if (packfileSourceType == DataSource::File)
+        reader = new BinaryReader(path_);
+    else if (packfileSourceType == DataSource::Memory)
+        reader = new BinaryReader(buffer_);
+
+    //Currently reads compressed data into one huge buffer and inflates, then writes out
+    //Read all compressed data into buffer and inflate it
+    u8* inputBuffer = new u8[Header.CompressedDataSize];
+    u8* outputBuffer = new u8[Header.DataSize];
+    reader->ReadToMemory(inputBuffer, Header.CompressedDataSize);
+    Compression::Inflate({ inputBuffer, Header.CompressedDataSize }, { outputBuffer, Header.DataSize });
+
+    //Write each subfile to disk
+    u32 index = 0;
+    std::vector<MemoryFile> output = {};
+    for (const auto& entry : Entries)
+    {
+        output.push_back(MemoryFile{ string(EntryNames[index]), { outputBuffer + entry.DataOffset, entry.DataSize } });
+        index++;
+    }
+
+    //Delete buffers after use
+    delete[] inputBuffer;
+    return output;
+}
+
 void Packfile3::ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader)
 {
-    //Todo: Support streaming in data section for C&C instead of loading all at once. Some users don't have enough ram for the larger files to be extracted this way
     //Currently reads compressed data into one huge buffer and inflates, then writes out
-
     //Read all compressed data into buffer and inflate it
     u8* inputBuffer = new u8[Header.CompressedDataSize];
     u8* outputBuffer = new u8[Header.DataSize];
