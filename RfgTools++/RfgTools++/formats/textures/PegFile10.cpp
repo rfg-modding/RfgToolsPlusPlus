@@ -78,9 +78,9 @@ void PegFile10::Cleanup()
 {
     for (auto& entry : Entries)
     {
-        if (!entry.RawData.empty())
+        if (!entry.RawData.data())
         {
-            delete entry.RawData.data();
+            delete[] entry.RawData.data();
         }
     }
 }
