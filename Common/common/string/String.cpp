@@ -27,4 +27,27 @@ namespace String
         std::transform(Copy.begin(), Copy.end(), Copy.begin(), [](unsigned char c) { return std::tolower(c); });
         return Copy;
     }
+
+    std::vector<std::string_view> SplitString(std::string_view view, std::string_view delimiter)
+    {
+        std::vector<std::string_view> output;
+        //output.reserve(view.length() / 4);
+        auto first = view.begin();
+
+        while (first != view.end())
+        {
+            const auto second = std::find_first_of(first, std::cend(view), std::cbegin(delimiter), std::cend(delimiter));
+            if (first != second)
+            {
+                output.emplace_back(view.substr(std::distance(view.begin(), first), std::distance(first, second)));
+            }
+
+            if (second == view.end())
+                break;
+
+            first = std::next(second);
+        }
+
+        return output;
+    }
 }
