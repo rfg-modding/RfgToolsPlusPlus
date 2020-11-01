@@ -30,7 +30,23 @@ void PegFile10::Write(BinaryWriter& cpuFile, BinaryWriter& gpuFile)
     if (!headerRead_)
         return;
 
-    
+    //Write pixel data to gpu file first
+    for (auto& entry : Entries)
+    {
+        gpuFile.WriteFromMemory(entry.RawData.data(), entry.RawData.size_bytes());
+        gpuFile.Align(AlignValue);
+    }
+
+    //Write header to cpu file. First 24 bytes of this class is same layout as header
+    cpuFile.WriteFromMemory(this, 24);
+
+    //Write entry data to cpu file
+    for (auto& entry : Entries)
+        entry.Write(cpuFile);
+
+    //Write entry filenames
+    for (auto& entry : Entries)
+        cpuFile.WriteNullTerminatedString(entry.Name);
 }
 
 void PegFile10::ReadTextureData(BinaryReader& gpuFile, PegEntry10& entry)
