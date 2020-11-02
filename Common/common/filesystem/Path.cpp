@@ -17,7 +17,7 @@ namespace Path
 
     string GetFileNameNoExtension(const std::filesystem::path& FullPath)
     {
-        return GetFileName(FullPath.string());
+        return GetFileNameNoExtension(FullPath.string());
     }
 
     string GetFileNameNoExtension(const string& FullPath)
