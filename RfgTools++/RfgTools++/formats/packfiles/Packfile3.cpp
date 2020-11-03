@@ -13,6 +13,8 @@
 #include <future>
 #include <zlib.h>
 
+tinyxml2::XMLDocument* GetStreamsFile(Packfile3* packfile);
+
 Packfile3::Packfile3(const string& path) : path_(path), packfileSourceType(DataSource::File)
 {
     name_ = Path::GetFileName(path_);
@@ -83,7 +85,7 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
         delete reader;
 }
 
-void Packfile3::ExtractSubfiles(const string& outputPath)
+void Packfile3::ExtractSubfiles(const string& outputPath, bool writeStreamsFile)
 {
     //Create reader
     BinaryReader* reader = nullptr;
@@ -117,14 +119,14 @@ void Packfile3::ExtractSubfiles(const string& outputPath)
     else
         ExtractDefault(outputPath, *reader);
 
-    //Write streams file for str2_pc files
-    if (Path::GetExtension(outputPath) == ".str2_pc")
-        WriteStreamsFile(outputPath); //Todo: Consider writing this for all packfiles
+    //@streams.xml contains files in packfile and their order
+    if (writeStreamsFile)
+        WriteStreamsFile(this, outputPath); //Todo: Consider writing this for all packfiles
 
     delete reader;
 }
 
-std::vector<MemoryFile> Packfile3::ExtractSubfiles()
+std::vector<MemoryFile> Packfile3::ExtractSubfiles(bool writeStreamsFile)
 {
     //Todo: Support other formats
     //For now this only supports C&C files
@@ -153,6 +155,10 @@ std::vector<MemoryFile> Packfile3::ExtractSubfiles()
         output.push_back(MemoryFile{ string(EntryNames[index]), { outputBuffer + entry.DataOffset, entry.DataSize } });
         index++;
     }
+
+    //@streams.xml contains files in packfile and their order
+    if (writeStreamsFile)
+        output.push_back(GetStreamsFileMemory(this));
 
     //Delete buffers after use
     delete[] inputBuffer;
@@ -220,11 +226,6 @@ void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader)
         delete[] buffer;
         index++;
     }
-}
-
-void Packfile3::WriteStreamsFile(const string& outputPath)
-{
-    
 }
 
 void Packfile3::ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths)
@@ -706,4 +707,49 @@ bool Packfile3::Contains(s_view subfileName, u32& index)
     }
 
     return false;
+}
+
+tinyxml2::XMLDocument* GetStreamsFile(Packfile3* packfile)
+{
+    tinyxml2::XMLDocument* doc = new tinyxml2::XMLDocument;
+
+    auto* streamsBlock = doc->NewElement("streams");
+    streamsBlock->SetAttribute("endian", "Little");
+    streamsBlock->SetAttribute("compressed", packfile->Compressed ? "True" : "False");
+    streamsBlock->SetAttribute("condensed", packfile->Condensed ? "True" : "False");
+
+    //Set entries
+    for (u32 i = 0; i < packfile->Entries.size(); i++)
+    {
+        auto& entry = packfile->Entries[i];
+        auto* entryElement = streamsBlock->InsertNewChildElement("entry");
+        entryElement->SetAttribute("name", packfile->EntryNames[i]);
+        entryElement->SetText(packfile->EntryNames[i]);
+    }
+
+    doc->InsertFirstChild(streamsBlock);
+    return doc;
+}
+
+MemoryFile GetStreamsFileMemory(Packfile3* packfile)
+{
+    //Construct streams file and printer
+    tinyxml2::XMLDocument* doc = GetStreamsFile(packfile);
+    tinyxml2::XMLPrinter printer;
+    doc->Accept(&printer);
+
+    //Copy xml string to buffer
+    u8* buffer = new u8[printer.CStrSize()];
+    memcpy(buffer, printer.CStr(), printer.CStrSize());
+
+    //Delete doc and return buffer containing xml stream
+    delete doc;
+    return MemoryFile{ .Filename = "@streams.xml", .Bytes = std::span<u8>(buffer, printer.CStrSize()) };
+}
+
+void WriteStreamsFile(Packfile3* packfile, const string& outputPath)
+{
+    tinyxml2::XMLDocument* doc = GetStreamsFile(packfile);
+    doc->SaveFile((outputPath + "\\@streams.xml").c_str());
+    delete doc;
 }

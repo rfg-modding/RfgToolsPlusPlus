@@ -43,9 +43,11 @@ public:
     //Reads header, entries, and filenames from packfile
     void ReadMetadata(BinaryReader* reader = nullptr);
     //Extracts subfiles to outputPath
-    void ExtractSubfiles(const string& outputPath);
-    //Extracts subfiles in memory and returns it
-    std::vector<MemoryFile> ExtractSubfiles();
+    void ExtractSubfiles(const string& outputPath, bool writeStreamsFile = false);
+    //Todo: Make the way this functions returned memory must be freed more obvious. Currently odd and easy to mess up
+    //Extracts subfiles in memory and returns it. NOTE: This overload only supports C&C packfiles and the user must free the returned files memory.
+    //Also note that you only need to free the first file since the extraction method decompresses them this way
+    std::vector<MemoryFile> ExtractSubfiles(bool writeStreamsFile = false);
 
     //Attempts to extract a subfiles data as a raw byte array. User must free memory once they're done with it
     //Handles decompressing compressed subfiles. Currently does not work on packfiles with both the compressed & condensed flags
@@ -88,7 +90,6 @@ private:
     void ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader);
     void ExtractCompressed(const string& outputPath, BinaryReader& reader);
     void ExtractDefault(const string& outputPath, BinaryReader& reader);
-    void WriteStreamsFile(const string& outputPath);
 
     static void ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths);
 
@@ -101,3 +102,7 @@ private:
 
     DataSource packfileSourceType = DataSource::None;
 };
+
+//Todo: Move these into a util file
+MemoryFile GetStreamsFileMemory(Packfile3* packfile);
+void WriteStreamsFile(Packfile3* packfile, const string& outputPath);
