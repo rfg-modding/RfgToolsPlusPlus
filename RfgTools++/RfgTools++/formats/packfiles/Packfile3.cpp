@@ -382,14 +382,14 @@ void Packfile3::ReadAsmFiles()
         if (Path::GetExtension(EntryNames[i]) != ".asm_pc")
             continue;
 
-        auto* name = EntryNames[i];
+        const char* name = EntryNames[i];
         auto data = ExtractSingleFile(EntryNames[i]);
         if (!data)
             continue;
 
         AsmFile5& asmFile = AsmFiles.emplace_back();
         BinaryReader reader(data.value());
-        asmFile.Read(reader);
+        asmFile.Read(reader, name);
 
         //Remove containers that don't have a corresponding str2_pc file. For some reason asm_pc files have these "ghost files"
         auto iterator = asmFile.Containers.begin();
@@ -435,8 +435,8 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
     std::vector<std::filesystem::directory_entry> subfilePaths = {};
     
     string extension = Path::GetExtension(outputPath);
-    bool usingStreamsFile = extension == ".str2_pc";
-    bool isStr2 = extension == ".str2_pc";
+    bool usingStreamsFile = (extension == ".str2_pc");
+    bool isStr2 = (extension == ".str2_pc");
     if (usingStreamsFile)
     {
         ReadStreamsFile(inputPath, compressed, condensed, subfilePaths);
