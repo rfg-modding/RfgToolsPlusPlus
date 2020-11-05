@@ -20,6 +20,127 @@ Packfile3::Packfile3(const string& path) : path_(path), packfileSourceType(DataS
     name_ = Path::GetFileName(path_);
 }
 
+Packfile3::Packfile3(std::span<u8> buffer) : buffer_(buffer), packfileSourceType(DataSource::Memory)
+{
+
+}
+
+Packfile3::~Packfile3()
+{
+    //Clear heap data if pointers are valid
+    if(filenamesBuffer_)
+        delete[] filenamesBuffer_;
+    if (buffer_.data() && packfileSourceType == DataSource::Memory)
+        delete[] buffer_.data();
+}
+
+Packfile3::Packfile3(const Packfile3& other) //Copy constructor
+{
+    //Set plain values
+    Header = other.Header;
+    Compressed = other.Compressed;
+    Condensed = other.Condensed;
+    Entries = other.Entries;
+    AsmFiles = other.AsmFiles;
+    path_ = other.path_;
+    name_ = other.name_;
+    readMetadata_ = other.readMetadata_;
+    dataBlockOffset_ = other.dataBlockOffset_;
+    packfileSourceType = other.packfileSourceType;
+
+    //Perform deep copy of any heap data
+    filenamesBuffer_ = new u8[Header.NameBlockSize];
+    memcpy(filenamesBuffer_, other.filenamesBuffer_, other.Header.NameBlockSize);
+    if (packfileSourceType == DataSource::Memory)
+    {
+        u8* bufferPtr = new u8[other.buffer_.size()];
+        buffer_ = std::span<u8>(bufferPtr, other.buffer_.size());
+    }
+
+    //Update entry name ptrs to new filename buffer
+    EntryNames.clear();
+    if(Header.NameBlockSize > 0)
+    { 
+        EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_));
+        for (int i = 0; i < Header.NameBlockSize - 1; i++)
+        {
+            if (filenamesBuffer_[i] == '\0')
+                EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_) + i + 1);
+        }
+    }
+}
+
+Packfile3::Packfile3(Packfile3&& other) noexcept //Move constructor
+{
+    //Set plain values
+    Header = other.Header;
+    Compressed = other.Compressed;
+    Condensed = other.Condensed;
+    Entries = other.Entries;
+    AsmFiles = other.AsmFiles;
+    path_ = other.path_;
+    name_ = other.name_;
+    readMetadata_ = other.readMetadata_;
+    dataBlockOffset_ = other.dataBlockOffset_;
+    packfileSourceType = other.packfileSourceType;
+    EntryNames = other.EntryNames;
+
+    //Take ownership of heap data
+    filenamesBuffer_ = other.filenamesBuffer_;
+    if (other.packfileSourceType == DataSource::Memory)
+        buffer_ = other.buffer_;
+
+    //Clear heap pointers on other copy so it's destructor doesn't free them
+    other.filenamesBuffer_ = nullptr;
+    other.buffer_ = std::span<u8>();
+}
+
+//Copy assignment operator
+Packfile3& Packfile3::operator=(const Packfile3& other)
+{
+    //Make copy of other with copy constructor
+    Packfile3 temp(other);
+    //Move data of copy into this with move assignment operator
+    *this = std::move(temp);
+    return *this;
+}
+
+//Move assignment operator
+Packfile3& Packfile3::operator=(Packfile3&& other) noexcept
+{
+    //Prevent calling on self
+    if (this == &other)
+        return *this;
+
+    //Since this is called on existing instances we delete our current heap data and take ownership of the others
+    if (filenamesBuffer_)
+        delete[] filenamesBuffer_;
+    if (buffer_.data() && packfileSourceType == DataSource::Memory)
+        delete[] buffer_.data();
+
+    //Take ownership of others heap data
+    filenamesBuffer_ = other.filenamesBuffer_;
+    buffer_ = other.buffer_;
+
+    //Set members
+    Header = other.Header;
+    Compressed = other.Compressed;
+    Condensed = other.Condensed;
+    Entries = other.Entries;
+    AsmFiles = other.AsmFiles;
+    path_ = other.path_;
+    name_ = other.name_;
+    readMetadata_ = other.readMetadata_;
+    dataBlockOffset_ = other.dataBlockOffset_;
+    packfileSourceType = other.packfileSourceType;
+    EntryNames = other.EntryNames;
+
+    //Clear heap pointers on other copy so it's destructor doesn't free them (this instance owns them now)
+    other.filenamesBuffer_ = nullptr;
+    other.buffer_ = std::span<u8>();
+    return *this;
+}
+
 void Packfile3::ReadMetadata(BinaryReader* reader)
 {
     //Create BinaryReader if one isn't provided

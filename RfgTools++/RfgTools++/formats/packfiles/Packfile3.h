@@ -35,9 +35,14 @@ public:
     //Used when the packfile source is a file
     Packfile3(const string& path);
     //Used when the packfile source is a memory buffer
-    Packfile3(std::span<u8> buffer) : buffer_(buffer), packfileSourceType(DataSource::Memory) {}
+    Packfile3(std::span<u8> buffer);
     //Delete the default constructor since we want to ensure the path or buffer are set properly
     Packfile3() = delete;
+    ~Packfile3();
+    Packfile3(const Packfile3& other); //Copy constructor
+    Packfile3(Packfile3&& other) noexcept; //Move constructor
+    Packfile3& operator=(const Packfile3& other); //Copy assignment operator
+    Packfile3& operator=(Packfile3&& other) noexcept; //Move assignment operator
 
     //Functions which need access to the file
     //Reads header, entries, and filenames from packfile
@@ -64,14 +69,6 @@ public:
     void SetName(const string& name) { name_ = name; }
     string Name() const { return name_; }
     const char* NameCstr() const { return name_.data(); }
-
-    //Clear resources. Done manually to avoid hidden destruction when copies occur. Easy to miss copies and have odd bugs
-    void Cleanup() 
-    {
-        delete filenamesBuffer_; 
-        if (packfileSourceType == DataSource::Memory)
-            delete[] buffer_.data();
-    }
 
     static void Pack(const string& inputPath, const string& outputPath, bool compressed, bool condensed);
 
