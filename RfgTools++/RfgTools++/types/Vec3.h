@@ -48,9 +48,9 @@ struct Vec3
     Vec3 Cross(const Vec3& B)
     {
         Vec3 C;
-        C.x = (y * B.z) - (B.y * z);
-        C.y = (B.x * z) - (y * B.z);
-        C.z = (x * B.y) - (B.x * y);
+        C.x = (y * B.z) - (z * B.y);
+        C.y = (z * B.x) - (x * B.z);
+        C.z = (x * B.y) - (y * B.x);
         return C;
     }
 
