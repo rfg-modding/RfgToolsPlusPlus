@@ -15,7 +15,7 @@ public:
     u32 ConstantNameChecksumsOffset; //Seems to be a ptr set at runtime
     u32 ConstantBlockOffset; //Seems to be a ptr set at runtime
 
-    public void Read(BinaryReader& data)
+    void Read(BinaryReader& data)
     {
         ShaderHandle = data.ReadUint32();
         NameChecksum = data.ReadUint32();
@@ -27,4 +27,4 @@ public:
         ConstantNameChecksumsOffset = data.ReadUint32();
         ConstantBlockOffset = data.ReadUint32();
     }
-}
+};

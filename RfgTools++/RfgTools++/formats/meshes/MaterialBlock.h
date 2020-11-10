@@ -4,6 +4,7 @@
 #include "TextureDesc.h"
 #include "MaterialConstant.h"
 #include <BinaryTools/BinaryReader.h>
+#include <vector>
 
 class MaterialBlock
 {

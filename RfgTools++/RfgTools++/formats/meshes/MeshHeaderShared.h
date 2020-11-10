@@ -36,4 +36,4 @@ public:
         TextureNamesOffset = cpuFile.ReadUint32();
         cpuFile.Skip(4);
     }
-}
+};
