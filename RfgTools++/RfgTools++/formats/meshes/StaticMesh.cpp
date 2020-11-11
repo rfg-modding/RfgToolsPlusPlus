@@ -26,10 +26,8 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name)
     CmIndex = cpuFile.ReadUint32();
     cpuFile.Skip(4);
 
-    //Read mesh data
-    //Seek to mesh data offset
+    //Seek to mesh data offset and read mesh data
     cpuFile.SeekBeg(Header.MeshOffset);
-
     MeshVersion = cpuFile.ReadUint32();
     MeshSimpleCrc = cpuFile.ReadUint32();
     CpuDataSize = cpuFile.ReadUint32();
@@ -39,6 +37,7 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name)
     VertexBufferConfig.Read(cpuFile);
     IndexBufferConfig.Read(cpuFile);
 
+    //Read submesh data. Usually only one submesh in static meshes
     for (int i = 0; i < NumSubmeshes; i++)
     {
         SubmeshData& submesh = SubMeshes.emplace_back();
@@ -52,20 +51,24 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name)
     
     //Todo: Compare with previous crc and report error if they don't match
     u32 MeshSimpleCrc2 = cpuFile.ReadUint32();
-    
-    //Align to 16 bytes before next section
-    cpuFile.Align(16);
 
     //Read material data block
-    MaterialBlock.Read(cpuFile);
+    cpuFile.SeekBeg(Header.MaterialMapOffset);
+    MaterialBlock.Read(cpuFile, Header.MaterialsOffset); //Handles reading material map and materials
 
     //Read texture names
     cpuFile.SeekBeg(Header.TextureNamesOffset);
-    for (auto& textureDesc : MaterialBlock.TextureDescs)
+    for (auto& material : MaterialBlock.Materials)
     {
-        cpuFile.SeekBeg(Header.TextureNamesOffset + textureDesc.NameOffset);
-        TextureNames.push_back(cpuFile.ReadNullTerminatedString());
+        for (auto& textureDesc : material.TextureDescs)
+        {
+            cpuFile.SeekBeg(Header.TextureNamesOffset + textureDesc.NameOffset);
+            TextureNames.push_back(cpuFile.ReadNullTerminatedString());
+        }
     }
+
+    //Todo: Read mesh_tag list after texture name list
+    //Todo: Read havok data that is sometimes present here (see tharsis_gun_weapon.csmesh_pc). Has MCKH signature which is always with havok stuff
 
     readHeader_ = true;
 }

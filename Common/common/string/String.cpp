@@ -1,5 +1,6 @@
 #include "String.h"
 #include <algorithm>
+#include <regex>
 
 namespace String
 {
@@ -49,5 +50,17 @@ namespace String
         }
 
         return output;
+    }
+
+    string Replace(string value, const string& replace, const string& replaceWith)
+    {
+        return std::regex_replace(value, std::regex(replace), replaceWith);
+    }
+
+    bool EqualIgnoreCase(const string& str0, const string& str1)
+    {
+        string str0Lower = String::ToLower(str0);
+        string str1Lower = String::ToLower(str1);
+        return str0Lower == str1Lower;
     }
 }
