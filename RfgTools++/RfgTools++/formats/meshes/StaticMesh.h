@@ -57,6 +57,10 @@ public:
 
     //Render blocks
     std::vector<RenderBlock> RenderBlocks;
+    std::vector<std::vector<RenderBlock>> RenderBlocksByMaterial;
+    std::vector<u32> SubmeshMaterials;
+    std::vector<u32> NumRenderBlocksPerMaterialCalculated;
+    std::vector<u32> globalIndexByMaterial;
 
     //Material data block
     MaterialBlock MaterialBlock;

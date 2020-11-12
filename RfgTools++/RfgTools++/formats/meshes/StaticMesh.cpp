@@ -4,6 +4,7 @@
 #include "common/string/String.h"
 #include "hashes/Hash.h"
 #include <filesystem>
+#include <set>
 
 void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, u32 version)
 {
@@ -27,7 +28,7 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
     cpuFile.Skip(4);
 
     //Seek to mesh data offset and read mesh data
-    cpuFile.SeekBeg(Header.MeshOffset);
+    cpuFile.SeekBeg(Header.MaterialMapOffset);
     MeshVersion = cpuFile.ReadUint32();
     MeshSimpleCrc = cpuFile.ReadUint32();
     CpuDataSize = cpuFile.ReadUint32();
@@ -43,29 +44,92 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
         SubmeshData& submesh = SubMeshes.emplace_back();
         submesh.Read(cpuFile);
     }
-    for (int i = 0; i < NumSubmeshes; i++)
+    u32 sum = 0;
+    for (u32 i = 0; i < NumSubmeshes; i++)
+    {
+        sum += SubMeshes[i].NumRenderBlocks;
+    }
+    printf("sum: %d, NumBlocks: %d\n", sum, IndexBufferConfig.NumBlocks);
+    for (int i = 0; i < IndexBufferConfig.NumBlocks; i++)
     {
         RenderBlock& renderBlock = RenderBlocks.emplace_back();
         renderBlock.Read(cpuFile);
     }
+
+    std::set<u32> materialIds;
+    for (auto& renderBlock : RenderBlocks)
+        materialIds.insert(renderBlock.MaterialMapIndex);
+
+    u32 numMaterials = materialIds.size();
+    for (u32 i = 0; i < numMaterials; i++)
+    {
+        std::vector<RenderBlock>& blocks = RenderBlocksByMaterial.emplace_back();
+        NumRenderBlocksPerMaterialCalculated.push_back(0);
+        for (auto& renderBlock : RenderBlocks)
+        {
+            if (renderBlock.MaterialMapIndex == i)
+                blocks.push_back(renderBlock);
+        }
+    }
+
+    u32 curIndexAll = 0;
+    for (u32 i = 0; i < numMaterials; i++)
+        globalIndexByMaterial.push_back(0);
+
+//    for (auto& submesh : SubMeshes)
+//    {
+//        u32 materialIndex = RenderBlocks[curIndexAll].MaterialMapIndex; //1
+//        u32& curIndexAllByMaterial = globalIndexByMaterial[materialIndex];
+//        if (curIndexAllByMaterial < curIndexAll)
+//            curIndexAllByMaterial = curIndexAll;
+////        else if (curIndexAll < curIndexAllByMaterial)
+////            curIndexAll = curIndexAllByMaterial;
+//
+//        u32 numSameIndex = 0;
+//        bool curIndexAllStopped = false;
+//        while (numSameIndex < submesh.NumRenderBlocks) //2 //3
+//        {
+//            if (RenderBlocks[curIndexAllByMaterial].MaterialMapIndex == materialIndex)
+//            {
+//                if (!curIndexAllStopped)
+//                    curIndexAll++; //1
+//
+//                numSameIndex++;
+//                //curIndexAllByMaterial++;
+//            }
+//            else
+//            {
+//                u32 curIndexAllMaterialIndexAll = globalIndexByMaterial[RenderBlocks[curIndexAll].MaterialMapIndex];
+//                if (curIndexAllMaterialIndexAll <= curIndexAll)
+//                {
+//                    curIndexAllStopped = true;
+//                }
+//                //curIndexAllByMaterial++;
+//            }
+//            curIndexAllByMaterial++;
+//        }
+//
+//        //curIndexAll += submesh.NumRenderBlocks;
+//        SubmeshMaterials.push_back(materialIndex);
+//    }
     
     //Todo: Compare with previous crc and report error if they don't match
     u32 MeshSimpleCrc2 = cpuFile.ReadUint32();
 
     //Read material data block
-    cpuFile.SeekBeg(Header.MaterialMapOffset);
-    MaterialBlock.Read(cpuFile, Header.MaterialsOffset); //Handles reading material map and materials
+    //cpuFile.SeekBeg(Header.MaterialMapOffset);
+    //MaterialBlock.Read(cpuFile, Header.MaterialsOffset); //Handles reading material map and materials
 
-    //Read texture names
-    cpuFile.SeekBeg(Header.TextureNamesOffset);
-    for (auto& material : MaterialBlock.Materials)
-    {
-        for (auto& textureDesc : material.TextureDescs)
-        {
-            cpuFile.SeekBeg(Header.TextureNamesOffset + textureDesc.NameOffset);
-            TextureNames.push_back(cpuFile.ReadNullTerminatedString());
-        }
-    }
+    ////Read texture names
+    //cpuFile.SeekBeg(Header.TextureNamesOffset);
+    //for (auto& material : MaterialBlock.Materials)
+    //{
+    //    for (auto& textureDesc : material.TextureDescs)
+    //    {
+    //        cpuFile.SeekBeg(Header.TextureNamesOffset + textureDesc.NameOffset);
+    //        TextureNames.push_back(cpuFile.ReadNullTerminatedString());
+    //    }
+    //}
 
     //Todo: Read mesh_tag list after texture name list
     //Todo: Read havok data that is sometimes present here (see tharsis_gun_weapon.csmesh_pc). Has MCKH signature which is always with havok stuff
@@ -80,6 +144,28 @@ std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFil
 
     //Get submesh data
     SubmeshData& submesh = SubMeshes[index];
+    //u32 submeshMaterial = SubmeshMaterials[index];
+
+    //std::vector<u32> renderBlockIndexByMaterial;
+    //for (u32 i = 0; i < RenderBlocksByMaterial.size(); i++)
+    //    renderBlockIndexByMaterial.push_back(0);
+
+    //for (u32 i = 0; i < index; i++)
+    //{
+    //    SubmeshData& sm = SubMeshes[i];
+    //    u32 smMaterial = SubmeshMaterials[i];
+
+    //    renderBlockIndexByMaterial[smMaterial] += sm.NumRenderBlocks;
+    //}
+
+    ////Calc number of render blocks and indices
+    //u32 firstRenderBlockIndex = renderBlockIndexByMaterial[submeshMaterial];
+    //u32 startIndex = RenderBlocksByMaterial[submeshMaterial][firstRenderBlockIndex].StartIndex;
+    //u32 numIndices = 0;
+    //for (u32 i = firstRenderBlockIndex; i < firstRenderBlockIndex + submesh.NumRenderBlocks; i++)
+    //{
+    //    numIndices += RenderBlocksByMaterial[submeshMaterial][i].NumIndices;
+    //}
 
     //Calc number of render blocks and indices
     u32 firstRenderBlockIndex = 0;
@@ -100,6 +186,8 @@ std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFil
     u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
     u64 vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
     u64 firstVertexOffset = vertexDataOffset + (startIndex * VertexBufferConfig.VertexStride0); //Offset of first vertex for this submesh
+    printf("index: %d\n", index);
+    printf("firstRenderBlockIndex: %d\n", firstRenderBlockIndex);
     printf("startIndex: %d\n", startIndex);
     printf("numIndices: %d\n", numIndices);
     printf("indexDataOffset: %d\n", indexDataOffset);
