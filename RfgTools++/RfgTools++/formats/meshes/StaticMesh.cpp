@@ -43,7 +43,7 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
         SubmeshData& submesh = SubMeshes.emplace_back();
         submesh.Read(cpuFile);
     }
-    for (int i = 0; i < NumSubmeshes; i++)
+    for (int i = 0; i < IndexBufferConfig.NumBlocks; i++)
     {
         RenderBlock& renderBlock = RenderBlocks.emplace_back();
         renderBlock.Read(cpuFile);
