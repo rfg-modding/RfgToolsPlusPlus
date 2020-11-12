@@ -24,10 +24,10 @@ class StaticMesh
 {
 public:
     //Read header data from cpu file
-    void Read(BinaryReader& reader, const string& name);
+    void Read(BinaryReader& reader, const string& name, u32 signature, u32 version);
     //Todo: Add support for reading data when theres > 1 submesh
     //Read raw data of a submesh. Must call Read to get data from cpu file first
-    std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile);
+    std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile, u32 index);
     void Write(BinaryWriter& out);
     void Write(const string& path);
 

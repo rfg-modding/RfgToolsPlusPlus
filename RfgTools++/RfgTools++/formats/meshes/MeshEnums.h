@@ -61,3 +61,6 @@ enum class VertexFormat : u8
     UncompressedMorph = 49,
     Invalid = 255
 };
+
+string to_string(PrimitiveTopology value);
+string to_string(VertexFormat value);

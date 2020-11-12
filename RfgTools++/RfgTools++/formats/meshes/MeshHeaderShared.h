@@ -13,15 +13,15 @@ public:
     u32 NumMaterials;
     u32 TextureNamesOffset;
 
-    void Read(BinaryReader& cpuFile, u32 expectedSignature)
+    void Read(BinaryReader& cpuFile, u32 expectedSignature, u32 expectedVersion)
     {
         Signature = cpuFile.ReadUint32();
         if (Signature != expectedSignature)
-            throw std::runtime_error("Error! Invalid static mesh signature. Expected value is" + std::to_string(expectedSignature) + ". The detected signature is " + std::to_string(Signature));
+            throw std::runtime_error("Error! Invalid static mesh signature. Expected value is " + std::to_string(expectedSignature) + ". The detected signature is " + std::to_string(Signature));
 
         Version = cpuFile.ReadUint32();
-        if (Version != 5)
-            throw std::runtime_error("Error! Invalid static mesh version. Expected version 5. The detected version is " + std::to_string(Version));
+        if (Version != expectedVersion)
+            throw std::runtime_error("Error! Invalid static mesh version. Expected version " + std::to_string(expectedVersion) + ". The detected version is " + std::to_string(Version));
 
         //Read header
         //Shared mesh header

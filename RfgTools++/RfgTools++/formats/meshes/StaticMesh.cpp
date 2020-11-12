@@ -5,10 +5,10 @@
 #include "hashes/Hash.h"
 #include <filesystem>
 
-void StaticMesh::Read(BinaryReader& cpuFile, const string& name)
+void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, u32 version)
 {
     Name = name;
-    Header.Read(cpuFile, 0xC0FFEE11);
+    Header.Read(cpuFile, signature, version);
 
     //Static mesh specific header data
     NumLods = cpuFile.ReadUint32();
@@ -73,30 +73,54 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name)
     readHeader_ = true;
 }
 
-std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFile)
+std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFile, u32 index)
 {
-    if (!readHeader_)
+    if (!readHeader_ || index >= SubMeshes.size())
         return {};
 
-    //Todo: Add support for different data layouts based on the PrimitiveTopology and VertexFormat enums
-    //Note: Currently assuming only one index and vertex type for static meshes, need to set up way of dynamically handling different layouts across meshes
-    //Read verification crc at start of gpu file
-    u32 gpuFileMeshSimpleCrc = gpuFile.ReadUint32(); //Todo: Compare with other CRCs and error if not equal
-    gpuFile.Align(16);
+    //Get submesh data
+    SubmeshData& submesh = SubMeshes[index];
+
+    //Calc number of render blocks and indices
+    u32 firstRenderBlockIndex = 0;
+    for (u32 i = 0; i < index; i++)
+    {
+        firstRenderBlockIndex += SubMeshes[i].NumRenderBlocks;
+    }
+    u32 startIndex = RenderBlocks[firstRenderBlockIndex].StartIndex;
+    u32 numIndices = 0;
+    for (u32 i = firstRenderBlockIndex; i < firstRenderBlockIndex + submesh.NumRenderBlocks; i++)
+    {
+        numIndices += RenderBlocks[i].NumIndices;
+    }
+
+    //Calculate positions of index and vertex data
+    u64 indexDataOffset = 16; //Start of index data
+    u64 indexDataEnd = indexDataOffset + (IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize); //End of index data
+    u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
+    u64 vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
+    u64 firstVertexOffset = vertexDataOffset + (startIndex * VertexBufferConfig.VertexStride0); //Offset of first vertex for this submesh
+    printf("startIndex: %d\n", startIndex);
+    printf("numIndices: %d\n", numIndices);
+    printf("indexDataOffset: %d\n", indexDataOffset);
+    printf("firstIndexOffset: %d\n", firstIndexOffset);
+    printf("vertexDataOffset: %d\n", vertexDataOffset);
+    printf("firstVertexOffset: %d\n", firstVertexOffset);
 
     //Read index buffer
-    u32 indexBufferSize = IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize;
+    gpuFile.SeekBeg(firstIndexOffset);
+    u32 indexBufferSize = numIndices * IndexBufferConfig.IndexSize;
     u8* indexBuffer = new u8[indexBufferSize];
     gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
-    gpuFile.Align(16);
 
     //Read vertex buffer
+    gpuFile.SeekBeg(firstVertexOffset);
+    //u32 vertexBufferSize = numIndices * VertexBufferConfig.VertexStride0;
     u32 vertexBufferSize = VertexBufferConfig.NumVerts * VertexBufferConfig.VertexStride0;
     u8* vertexBuffer = new u8[vertexBufferSize];
     gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
-    gpuFile.Align(16);
 
-    //Return submesh data
+    //Return submesh data buffers
     return MeshInstanceData
     {
         .VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
