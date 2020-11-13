@@ -40,6 +40,11 @@ struct Vec3
         return Vec3{ x / scalar, y / scalar, z / scalar };
     }
 
+    Vec3 operator*(f32 scalar)
+    {
+        return Vec3{ x * scalar, y * scalar, z * scalar };
+    }
+
     f32 Distance(const Vec3& B) const
     {
         return sqrt(pow(B.x - x, 2) + pow(B.y - y, 2) + pow(B.z - z, 2));
