@@ -30,6 +30,7 @@ public:
     std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile, u32 index);
     void Write(BinaryWriter& out);
     void Write(const string& path);
+    void WriteToObj(const string& gpuFilePath, const string& outputFolderPath, const string& diffuseTexturePath = "", const string& specularTexturePath = "", const string& normalTexturePath = "");
 
     string Name;
     //Shared mesh header used by all mesh types

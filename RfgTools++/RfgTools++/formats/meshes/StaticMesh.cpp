@@ -3,6 +3,7 @@
 #include "common/filesystem/File.h"
 #include "common/string/String.h"
 #include "hashes/Hash.h"
+#include "MeshHelpers.h"
 #include <filesystem>
 
 void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, u32 version)
@@ -130,4 +131,83 @@ void StaticMesh::Write(const string& path)
 {
     BinaryWriter out(path);
     Write(out);
+}
+
+//Todo: See if more of this function can be moved into MeshHelpers:: to reuse on other mesh formats
+void StaticMesh::WriteToObj(const string& gpuFilePath, const string& outputFolderPath, const string& diffuseMapPath, const string& specularMapPath, const string& normalMapPath)
+{
+    BinaryReader gpuFile(gpuFilePath);
+    if (!std::filesystem::exists(outputFolderPath))
+        return;
+
+    //For each submesh write a .obj file and a .mtl file
+    for (u32 i = 0; i < SubMeshes.size(); i++)
+    {
+        SubmeshData& submesh = SubMeshes[i];
+
+        //Output file paths
+        string objFilePath = outputFolderPath + "\\" + Path::GetFileNameNoExtension(Name) + std::to_string(i) + ".obj";
+        string mtlName = Path::GetFileNameNoExtension(Name) + std::to_string(i) + "_mat"; //Material name used inside .mtl and .obj files
+        string mtlFileName = Path::GetFileNameNoExtension(Name) + std::to_string(i) + ".mtl"; //.mtl filename
+        string mtlFilePath = outputFolderPath + "\\" + mtlFileName;
+
+        //Contains indices, vertices, UVs, etc
+        std::ofstream obj(objFilePath, std::ios_base::out | std::ios_base::trunc);
+        //Lists what textures to use for diffuse, specular, normal, etc
+        std::ofstream mtl(mtlFilePath, std::ios_base::out | std::ios_base::trunc);
+
+        //Write material name to obj
+        obj << "mtllib " << mtlName << "\n";
+        obj << "usemtl " << mtlName << "\n";
+
+        //Try to get vertex and index buffers
+        std::optional<MeshInstanceData> maybeMeshData = ReadSubmeshData(gpuFile, i);
+        if (!maybeMeshData)
+        {
+            printf("Failed to get mesh data for submesh %d of static mesh %s. Stopping export.\n", i, Name.c_str());
+            return;
+        }
+        MeshInstanceData meshData = maybeMeshData.value();
+        std::span<u8> indexBufferBytes = meshData.IndexBuffer;
+        std::span<u8> vertexBufferBytes = meshData.VertexBuffer;
+
+        //Write vertex data
+        bool result = MeshHelpers::WriteVerticesToObj(obj, VertexBufferConfig.Format, vertexBufferBytes);
+        if (!result)
+        {
+            printf("Failed to write vertex data for submesh %d of static mesh %s. Stopping export.\n", i, Name.c_str());
+            return;
+        }
+
+        //Write faces
+        std::span<u16> indices = std::span<u16>((u16*)indexBufferBytes.data(), indexBufferBytes.size_bytes() / 2);
+        for (u32 j = 1; j < indices.size() - 2; j++) //Todo: Why is j starting at 1?
+        {
+            //Get index values. Increment by one since .obj indices start at 1 instead of 0
+            u16 index0 = indices[j] + 1;
+            u16 index1 = indices[j + 1] + 1;
+            u16 index2 = indices[j + 2] + 1;
+
+            //Output face as "f index0/index0 index1/index1 index2/index2". E.g. "f 2/2 27/27 16/16"
+            obj << "f " << index0 << "/" << index0 << " " << index1 << "/" << index1 << " " << index2 << "/" << index2 << "\n";
+        }
+
+        //Release mesh data
+        delete[] meshData.IndexBuffer.data();
+        delete[] meshData.VertexBuffer.data();
+
+        //Write material data if textures provided
+        mtl << "newmtl " << mtlName << "\n";
+        mtl << "Ka 1.000 1.000 1.000" << "\n";
+        mtl << "Kd 1.000 1.000 1.000" << "\n";
+        mtl << "Ks 0.000 0.000 0.000" << "\n";
+        mtl << "\n";
+
+        if (diffuseMapPath != "")
+            mtl << "map_Kd " << diffuseMapPath << "\n";
+        if (specularMapPath != "")
+            mtl << "map_Ns " << specularMapPath << "\n";
+        if (normalMapPath != "")
+            mtl << "map_bump " << normalMapPath << "\n";
+    }
 }
