@@ -24,10 +24,9 @@ class StaticMesh
 {
 public:
     //Read header data from cpu file
-    void Read(BinaryReader& reader, const string& name, u32 signature, u32 version);
-    //Todo: Add support for reading data when theres > 1 submesh
+    void Read(BinaryReader& reader, const string& name, u32 signature, u32 version, bool isChunkFile = false);
     //Read raw data of a submesh. Must call Read to get data from cpu file first
-    std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile, u32 index);
+    std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile, u32 index, bool isChunkFile = false);
     void Write(BinaryWriter& out);
     void Write(const string& path);
     void WriteToObj(const string& gpuFilePath, const string& outputFolderPath, const string& diffuseTexturePath = "", const string& specularTexturePath = "", const string& normalTexturePath = "");
@@ -43,6 +42,7 @@ public:
     u32 MeshTagsInternalOffset;
     u32 CmIndex;
 
+    //Todo: Use MeshDataBlock here. It is exactly this layout so no point in making two separate definitions
     //Mesh data
     u32 MeshVersion;
     u32 MeshSimpleCrc; //Hash used several times in cpu and gpu file to validate mesh

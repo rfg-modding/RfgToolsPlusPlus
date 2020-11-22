@@ -4,122 +4,314 @@
 #include "common/string/String.h"
 #include "hashes/Hash.h"
 #include "MeshHelpers.h"
+#include "MeshDataBlock.h"
 #include <filesystem>
 
-void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, u32 version)
+void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, u32 version, bool isChunkFile)
 {
     Name = name;
-    Header.Read(cpuFile, signature, version);
 
-    //Static mesh specific header data
-    NumLods = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-    LodSubmeshIdOffset = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-    MeshTagsOffset = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-
-    MeshTagsNumTags = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-    MeshTagsInternalOffset = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-
-    CmIndex = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-
-    //Seek to mesh data offset and read mesh data
-    cpuFile.SeekBeg(Header.MeshOffset);
-    MeshVersion = cpuFile.ReadUint32();
-    MeshSimpleCrc = cpuFile.ReadUint32();
-    CpuDataSize = cpuFile.ReadUint32();
-    GpuDataSize = cpuFile.ReadUint32();
-    NumSubmeshes = cpuFile.ReadUint32();
-    SubmeshesOffset = cpuFile.ReadUint32();
-    VertexBufferConfig.Read(cpuFile);
-    IndexBufferConfig.Read(cpuFile);
-
-    //Read submesh data. Usually only one submesh in static meshes
-    for (int i = 0; i < NumSubmeshes; i++)
+    if (isChunkFile)
     {
-        SubmeshData& submesh = SubMeshes.emplace_back();
-        submesh.Read(cpuFile);
-    }
-    for (int i = 0; i < IndexBufferConfig.NumBlocks; i++)
-    {
-        RenderBlock& renderBlock = RenderBlocks.emplace_back();
-        renderBlock.Read(cpuFile);
-    }
-    
-    //Todo: Compare with previous crc and report error if they don't match
-    u32 MeshSimpleCrc2 = cpuFile.ReadUint32();
-
-    //Read material data block
-    cpuFile.SeekBeg(Header.MaterialMapOffset);
-    MaterialBlock.Read(cpuFile, Header.MaterialsOffset); //Handles reading material map and materials
-
-    //Read texture names
-    cpuFile.SeekBeg(Header.TextureNamesOffset);
-    for (auto& material : MaterialBlock.Materials)
-    {
-        for (auto& textureDesc : material.TextureDescs)
+        struct ChunkHeader
         {
-            cpuFile.SeekBeg(Header.TextureNamesOffset + textureDesc.NameOffset);
-            TextureNames.push_back(cpuFile.ReadNullTerminatedString());
-        }
-    }
+            unsigned int signature = 0;
+            unsigned int version = 0;
+            unsigned int source_rfgchunkx_version = 0;
+            unsigned int render_data_checksum = 0;
+            unsigned int render_cpu_data_offset = 0;
+            unsigned int render_cpu_data_size = 0;
+            unsigned int collision_model_checksum = 0;
+            unsigned int collision_model_data_offset = 0;
+            unsigned int collision_model_data_size = 0;
+            unsigned int destruction_checksum = 0;
+            unsigned int destruction_offset = 0;
+            unsigned int destruction_datasize = 0;
+        };
 
-    //Todo: Read mesh_tag list after texture name list
-    //Todo: Read havok data that is sometimes present here (see tharsis_gun_weapon.csmesh_pc). Has MCKH signature which is always with havok stuff
+        ChunkHeader chunkHeader;
+        cpuFile.ReadToMemory(&chunkHeader, sizeof(ChunkHeader));
+        cpuFile.SeekBeg(chunkHeader.render_cpu_data_offset);
+
+        //Read submesh metadata
+        MeshDataBlock meshData;
+        meshData.Read(cpuFile);
+
+        MeshVersion = meshData.Version;
+        CpuDataSize = meshData.CpuDataSize;
+        GpuDataSize = meshData.GpuDataSize;
+        NumSubmeshes = meshData.NumSubmeshes;
+        SubmeshesOffset = meshData.SubmeshesOffset;
+        memcpy(&VertexBufferConfig, &meshData.NumVertices, sizeof(VertexBufferConfig));
+        memcpy(&IndexBufferConfig, &meshData.NumIndices, sizeof(IndexBufferConfig));
+        SubMeshes = meshData.Submeshes;
+        RenderBlocks = meshData.RenderBlocks;
+
+        //Read texture names
+        cpuFile.Align(16);
+        u32 textureNamesBlockSize = cpuFile.ReadUint32();
+        u64 textureNamesStartPos = cpuFile.Position();
+        //Read strings until we reach the end of the string block
+        while (cpuFile.Position() - textureNamesStartPos < textureNamesBlockSize)
+        {
+            //Read null terminated string
+            TextureNames.push_back(cpuFile.ReadNullTerminatedString());
+            //Skip any additional null terminators. RFG likes to have random amounts of these
+            while (cpuFile.Position() - textureNamesStartPos < textureNamesBlockSize)
+            {
+                if (cpuFile.PeekChar() == '\0')
+                    cpuFile.Skip(1);
+                else
+                    break;
+            }
+        }
+        cpuFile.Align(16);
+        printf("Pos: %d\n", cpuFile.Position());
+        printf("\n");
+    }
+    else
+    {
+        Header.Read(cpuFile, signature, version);
+
+        //Static mesh specific header data
+        NumLods = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+        LodSubmeshIdOffset = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+        MeshTagsOffset = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+
+        MeshTagsNumTags = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+        MeshTagsInternalOffset = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+
+        CmIndex = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+
+        //Seek to mesh data offset and read mesh data
+        cpuFile.SeekBeg(Header.MeshOffset);
+        MeshVersion = cpuFile.ReadUint32();
+        MeshSimpleCrc = cpuFile.ReadUint32();
+        CpuDataSize = cpuFile.ReadUint32();
+        GpuDataSize = cpuFile.ReadUint32();
+        NumSubmeshes = cpuFile.ReadUint32();
+        SubmeshesOffset = cpuFile.ReadUint32();
+        VertexBufferConfig.Read(cpuFile);
+        IndexBufferConfig.Read(cpuFile);
+
+        //Read submesh data. Usually only one submesh in static meshes
+        for (int i = 0; i < NumSubmeshes; i++)
+        {
+            SubmeshData& submesh = SubMeshes.emplace_back();
+            submesh.Read(cpuFile);
+        }
+        for (int i = 0; i < IndexBufferConfig.NumBlocks; i++)
+        {
+            RenderBlock& renderBlock = RenderBlocks.emplace_back();
+            renderBlock.Read(cpuFile);
+        }
+
+        //Todo: Compare with previous crc and report error if they don't match
+        u32 MeshSimpleCrc2 = cpuFile.ReadUint32();
+
+        //Read material data block
+        cpuFile.SeekBeg(Header.MaterialMapOffset);
+        MaterialBlock.Read(cpuFile, Header.MaterialsOffset); //Handles reading material map and materials
+
+        //Read texture names
+        cpuFile.SeekBeg(Header.TextureNamesOffset);
+        for (auto& material : MaterialBlock.Materials)
+        {
+            for (auto& textureDesc : material.TextureDescs)
+            {
+                cpuFile.SeekBeg(Header.TextureNamesOffset + textureDesc.NameOffset);
+                TextureNames.push_back(cpuFile.ReadNullTerminatedString());
+            }
+        }
+
+        //Todo: Read mesh_tag list after texture name list
+        //Todo: Read havok data that is sometimes present here (see tharsis_gun_weapon.csmesh_pc). Has MCKH signature which is always with havok stuff
+    }
 
     readHeader_ = true;
 }
 
-std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFile, u32 index)
+std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFile, u32 index, bool isChunkFile)
 {
     if (!readHeader_ || index >= SubMeshes.size())
         return {};
 
-    //Get submesh data
-    SubmeshData& submesh = SubMeshes[index];
-
-    //Calc number of render blocks and indices
-    u32 firstRenderBlockIndex = 0;
-    for (u32 i = 0; i < index; i++)
+    if (isChunkFile)
     {
-        firstRenderBlockIndex += SubMeshes[i].NumRenderBlocks;
+        if (index == 0)
+        {
+        //    u64 vertexDataOffset = 0;
+        //    u8* indexBuffer0;
+        //    u32 indexBufferSize0 = 0;
+        //    u8* indexBuffer1;
+        //    u32 indexBufferSize1 = 0;
+        //    {
+        //        //Calculate positions of index and vertex data
+        //        u32 firstRenderBlockIndex = 0;
+        //        u32 startIndex = RenderBlocks[firstRenderBlockIndex].StartIndex;
+        //        u32 numIndices = 0;
+        //        for (u32 i = firstRenderBlockIndex; i < firstRenderBlockIndex + SubMeshes[0].NumRenderBlocks; i++)
+        //        {
+        //            numIndices += RenderBlocks[i].NumIndices;
+        //        }
+
+        //        u64 indexDataOffset = 16; //Start of index data
+        //        u64 indexDataEnd = indexDataOffset + (IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize); //End of index data
+        //        u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
+        //        vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
+
+        //        //Read index buffer
+        //        gpuFile.SeekBeg(firstIndexOffset);
+        //        indexBufferSize0 = numIndices * IndexBufferConfig.IndexSize;
+        //        indexBuffer0 = new u8[indexBufferSize0];
+        //        gpuFile.ReadToMemory(indexBuffer0, indexBufferSize0);
+        //    }
+        //    {
+        //        //Calculate positions of index and vertex data
+        //        u32 firstRenderBlockIndex = 1;
+        //        u32 startIndex = RenderBlocks[firstRenderBlockIndex].StartIndex;
+        //        u32 numIndices = 0;
+        //        for (u32 i = firstRenderBlockIndex; i < firstRenderBlockIndex + SubMeshes[0].NumRenderBlocks; i++)
+        //        {
+        //            numIndices += RenderBlocks[i].NumIndices;
+        //        }
+
+        //        u64 indexDataOffset = 16; //Start of index data
+        //        u64 indexDataEnd = indexDataOffset + (IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize); //End of index data
+        //        u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
+        //        vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
+
+        //        //Read index buffer
+        //        gpuFile.SeekBeg(firstIndexOffset);
+        //        indexBufferSize1 = numIndices * IndexBufferConfig.IndexSize;
+        //        indexBuffer1 = new u8[indexBufferSize1];
+        //        gpuFile.ReadToMemory(indexBuffer1, indexBufferSize1);                
+        //    }
+
+        //    u32 indexBufferSize = indexBufferSize0 + indexBufferSize1;
+        //    u8* indexBuffer = new u8[indexBufferSize];
+        //    memcpy(indexBuffer, indexBuffer0, indexBufferSize0);
+        //    memcpy(indexBuffer + indexBufferSize0, indexBuffer1, indexBufferSize1);
+
+        //    gpuFile.SeekBeg(vertexDataOffset);
+        //    u32 vertexBufferSize = VertexBufferConfig.NumVerts * VertexBufferConfig.VertexStride0;
+        //    u8* vertexBuffer = new u8[vertexBufferSize];
+        //    gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+
+        //    //Return submesh data buffers
+        //    return MeshInstanceData
+        //    {
+        //        .VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
+        //        .IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+        //    };
+        }
+
+        //Get submesh data
+        SubmeshData& submesh = SubMeshes[index];
+
+        //Calc number of render blocks and indices
+        u32 firstRenderBlockIndex = 0;
+        for (u32 i = 0; i < index; i++)
+        {
+            firstRenderBlockIndex += SubMeshes[i].NumRenderBlocks;
+        }
+        u32 startIndex = RenderBlocks[firstRenderBlockIndex].StartIndex;
+        u32 numIndices = 0;
+        for (u32 i = firstRenderBlockIndex; i < firstRenderBlockIndex + submesh.NumRenderBlocks; i++)
+        {
+            numIndices += RenderBlocks[i].NumIndices;
+        }
+
+        //Calculate positions of index and vertex data
+        u64 indexDataOffset = 16; //Start of index data
+        u64 indexDataEnd = indexDataOffset + (IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize); //End of index data
+        u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
+        u64 vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
+        u64 firstVertexOffset = vertexDataOffset + (startIndex * VertexBufferConfig.VertexStride0); //Offset of first vertex for this submesh
+
+        //Read index buffer
+        //gpuFile.SeekBeg(firstIndexOffset);
+        //u32 indexBufferSize = numIndices * IndexBufferConfig.IndexSize;
+        //u8* indexBuffer = new u8[indexBufferSize];
+        //gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+
+        u32 indexBufferSize = numIndices * IndexBufferConfig.IndexSize;
+        u8* indexBuffer = new u8[indexBufferSize];
+        u32 indexBufferOffset = 0;
+        for (u32 i = 0; i < submesh.NumRenderBlocks; i++)
+        {
+            RenderBlock& block = RenderBlocks[(u64)(firstRenderBlockIndex + i)];
+            u64 blockFirstIndexOffset = 16 + (block.StartIndex * (u32)IndexBufferConfig.IndexSize); //Offset of first index for this block
+            u64 blockIndicesSize = block.NumIndices * (u32)IndexBufferConfig.IndexSize;
+
+            gpuFile.SeekBeg(blockFirstIndexOffset);
+            gpuFile.ReadToMemory((indexBuffer + indexBufferOffset), blockIndicesSize);
+            indexBufferOffset += blockIndicesSize;
+        }
+
+        //Read vertex buffer
+        gpuFile.SeekBeg(vertexDataOffset);
+        u32 vertexBufferSize = VertexBufferConfig.NumVerts * VertexBufferConfig.VertexStride0;
+        u8* vertexBuffer = new u8[vertexBufferSize];
+        gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+
+        //Return submesh data buffers
+        return MeshInstanceData
+        {
+            .VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
+            .IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+        };
     }
-    u32 startIndex = RenderBlocks[firstRenderBlockIndex].StartIndex;
-    u32 numIndices = 0;
-    for (u32 i = firstRenderBlockIndex; i < firstRenderBlockIndex + submesh.NumRenderBlocks; i++)
+    else
     {
-        numIndices += RenderBlocks[i].NumIndices;
+        //Get submesh data
+        SubmeshData& submesh = SubMeshes[index];
+
+        //Calc number of render blocks and indices
+        u32 firstRenderBlockIndex = 0;
+        for (u32 i = 0; i < index; i++)
+        {
+            firstRenderBlockIndex += SubMeshes[i].NumRenderBlocks;
+        }
+        u32 startIndex = RenderBlocks[firstRenderBlockIndex].StartIndex;
+        u32 numIndices = 0;
+        for (u32 i = firstRenderBlockIndex; i < firstRenderBlockIndex + submesh.NumRenderBlocks; i++)
+        {
+            numIndices += RenderBlocks[i].NumIndices;
+        }
+
+        //Calculate positions of index and vertex data
+        u64 indexDataOffset = 16; //Start of index data
+        u64 indexDataEnd = indexDataOffset + (IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize); //End of index data
+        u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
+        u64 vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
+        u64 firstVertexOffset = vertexDataOffset + (startIndex * VertexBufferConfig.VertexStride0); //Offset of first vertex for this submesh
+
+        //Read index buffer
+        gpuFile.SeekBeg(firstIndexOffset);
+        u32 indexBufferSize = numIndices * IndexBufferConfig.IndexSize;
+        u8* indexBuffer = new u8[indexBufferSize];
+        gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+
+        //Read vertex buffer
+        gpuFile.SeekBeg(firstVertexOffset);
+        u32 vertexBufferSize = VertexBufferConfig.NumVerts * VertexBufferConfig.VertexStride0;
+        u8* vertexBuffer = new u8[vertexBufferSize];
+        gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+
+        //Return submesh data buffers
+        return MeshInstanceData
+        {
+            .VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
+            .IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+        };
     }
-
-    //Calculate positions of index and vertex data
-    u64 indexDataOffset = 16; //Start of index data
-    u64 indexDataEnd = indexDataOffset + (IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize); //End of index data
-    u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
-    u64 vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
-    u64 firstVertexOffset = vertexDataOffset + (startIndex * VertexBufferConfig.VertexStride0); //Offset of first vertex for this submesh
-
-    //Read index buffer
-    gpuFile.SeekBeg(firstIndexOffset);
-    u32 indexBufferSize = numIndices * IndexBufferConfig.IndexSize;
-    u8* indexBuffer = new u8[indexBufferSize];
-    gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
-
-    //Read vertex buffer
-    gpuFile.SeekBeg(firstVertexOffset);
-    u32 vertexBufferSize = VertexBufferConfig.NumVerts * VertexBufferConfig.VertexStride0;
-    u8* vertexBuffer = new u8[vertexBufferSize];
-    gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
-
-    //Return submesh data buffers
-    return MeshInstanceData
-    {
-        .VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
-        .IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
-    };
 }
 
 void StaticMesh::Write(BinaryWriter& out)
