@@ -13,6 +13,7 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
 
     if (isChunkFile)
     {
+        //Todo: Use c_chunk_base here instead. Game directly maps that struct to start of the file. Rest of bytes to reach 704 (mesh data offset) is an align(64)
         struct ChunkHeader
         {
             unsigned int signature = 0;
@@ -32,6 +33,8 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
         ChunkHeader chunkHeader;
         cpuFile.ReadToMemory(&chunkHeader, sizeof(ChunkHeader));
         cpuFile.SeekBeg(chunkHeader.render_cpu_data_offset);
+        Header.Signature = chunkHeader.signature;
+        Header.Version = chunkHeader.version;
 
         //Read submesh metadata
         MeshDataBlock meshData;
@@ -46,9 +49,9 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
         memcpy(&IndexBufferConfig, &meshData.NumIndices, sizeof(IndexBufferConfig));
         SubMeshes = meshData.Submeshes;
         RenderBlocks = meshData.RenderBlocks;
+        cpuFile.Align(16);
 
         //Read texture names
-        cpuFile.Align(16);
         u32 textureNamesBlockSize = cpuFile.ReadUint32();
         u64 textureNamesStartPos = cpuFile.Position();
         //Read strings until we reach the end of the string block
@@ -66,8 +69,158 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
             }
         }
         cpuFile.Align(16);
-        printf("Pos: %d\n", cpuFile.Position());
+        printf("Pos after reading texture names: %d\n", cpuFile.Position());
+
+        //Todo: Try to merge this and the code of MaterialBlock. They're very similar with slight differences. Unsure if that means they're really different or if I'm just not seeing the common thread
+        u32 materialAlign = cpuFile.ReadUint32(); //16 in all files I've seen so far
+        Header.NumMaterials = cpuFile.ReadUint32();
+        for (u32 i = 0; i < Header.NumMaterials; i++)
+            MaterialIds.push_back(cpuFile.ReadUint32());
+
+        cpuFile.Align(materialAlign);
+        cpuFile.Skip(Header.NumMaterials * 8);
+        cpuFile.Align(materialAlign);
+
+        printf("Pos of first material: %d\n", cpuFile.Position());
+        for (u32 i = 0; i < Header.NumMaterials; i++)
+        {
+            RfgMaterial& material = ChunkMaterials.emplace_back();
+            material.Read(cpuFile);
+        }
+
+        printf("Position at end of material data block 0: %d\n", cpuFile.Position());
+        //Todo: Figure out if supposed to Align(64) or Skip(64) here. Game seems to Align(64) but Skip(64) is what gets us to the next data section in the test file
+        cpuFile.Align(64);
+        //cpuFile.Skip(64);
+        printf("Position at expected start of destruction data block: %d\n", cpuFile.Position());
+
+        //Todo: If the file has any general objects they'd be here. So far all I've seen have 0. This is a value in the extended header, c_chunk_base that isn't used yet
+
+        //Todo: Some other data after this. Ignoring for now since don't need it yet. Will need eventually for editing buildings.
+
+        //Jump straight to destruction offset since we don't need the other data before it currently
+        cpuFile.SeekBeg(chunkHeader.destruction_offset);
+        if (cpuFile.Position() != chunkHeader.destruction_offset)
+            throw std::exception("Error! Current location does not equal the destruction data offset as it is expected to at this point!");
+
+        cpuFile.Align(128); //Todo: Just guessing at this point...
+        printf("Position at expected start of destroyables data block: %d\n", cpuFile.Position());
+
+        u32 numDestroyables = cpuFile.ReadUint32();
+        //Seemingly random data skip that the game does. Maybe empty space in case it's needed eventually
+        cpuFile.Skip((numDestroyables * 8) + 4);
+        //cpuFile.Align(16);
+
+        printf("Position at expected start of first destroyable: %d\n", cpuFile.Position());
+
+        //TODO: SUPPORT numDestroyables > 1  and switch to i < numDestroyables here
+        for (u32 i = 0; i < numDestroyables; i++)
+        {
+            cpuFile.Align(16);
+            printf("Position at start of destroyable[%d]: %d\n", i, cpuFile.Position());
+
+            //Create new destroyable instance
+            auto& destroyable = Destroyables.emplace_back();
+
+            //Read base data and align to next piece of data
+            cpuFile.ReadToMemory(&destroyable.base, sizeof(destroyable_base)/*44*/);
+            cpuFile.Align(128);
+
+            auto a = cpuFile.Position();
+
+            //Todo: Could allocate a buffer and read all this data at once then access with a span
+            //Read base object data
+            for (u32 j = 0; j < destroyable.base.num_objects; j++)
+            {
+                auto& subpiece = destroyable.subpieces.emplace_back();
+                cpuFile.ReadToMemory(&subpiece, sizeof(subpiece_base)/*64*/);
+            }
+            for (u32 j = 0; j < destroyable.base.num_objects; j++)
+            {
+                auto& subpiece_data = destroyable.subpieces_data.emplace_back();
+                cpuFile.ReadToMemory(&subpiece_data, sizeof(subpiece_base_data)/*12*/);
+            }
+
+            //for (u32 j = 0; j < destroyable.base.num_objects; j++)
+            //{
+            //    std::cout << destroyable.subpieces_data[j].render_subpiece << "\n";
+            //}
+
+            //Todo: LABEL: Big weird physical material do-while loop
+            //Todo: Figure out what this data is meant to be. Game has some physical material code here. Maybe link material
+            auto b = cpuFile.Position();
+            for (auto& subpiece : destroyable.subpieces)
+                cpuFile.Skip(subpiece.num_links * 2);
+
+            cpuFile.Align(4);
+            auto d = cpuFile.Position();
+
+            //Read links
+            for (u32 j = 0; j < destroyable.base.num_links; j++)
+            {
+                auto& link = destroyable.links.emplace_back();
+                cpuFile.ReadToMemory(&link, sizeof(link_base)/*16*/);
+            }
+            auto e = cpuFile.Position();
+            cpuFile.Align(4);
+            auto f = cpuFile.Position();
+            printf("Position after reading links: %d\n", cpuFile.Position());
+
+
+            //Read dlods
+            for (u32 j = 0; j < destroyable.base.num_dlods; j++)
+            {
+                auto& dlod = destroyable.dlods.emplace_back();
+                cpuFile.ReadToMemory(&dlod, sizeof(dlod_base)/*60*/);
+            }
+            auto g = cpuFile.Position();
+            cpuFile.Align(4);
+            auto h = cpuFile.Position();
+            printf("Position after reading dlods: %d\n", cpuFile.Position());
+
+
+            //Read rbb nodes
+            destroyable.rbb_nodes.push_back(rfg_rbb_node());
+            rfg_rbb_node* curNode = &destroyable.rbb_nodes.back();
+            curNode->Read(cpuFile);
+            u32 num_objects = curNode->num_objects;
+            while (num_objects > 0)
+            {
+                //Todo: Implement this loop. Not yet added since the test file doesn't use it
+                throw std::exception("Support for multiple rbb nodes not yet added!");
+            }
+            auto k = cpuFile.Position();
+            cpuFile.Align(4);
+            auto l = cpuFile.Position();
+            printf("Position after reading rbb nodes: %d\n", cpuFile.Position());
+
+
+            //Read instance data. Seems to be junk in the file and set at runtime. Unless it's offset from the packfile start or something painful like that
+            cpuFile.ReadToMemory(&destroyable.instance_data, sizeof(destroyable_instance_data)/*20*/);
+            static_assert(sizeof(destroyable_instance_data) == 20, "destroyable_instance_data size check failed!");
+            printf("Position after reading destroyable instance data: %d\n", cpuFile.Position());
+
+            //Todo: There may be some data we have to read/skip here. The code at this point was confusing. Something something aabb instances
+
+            auto m = cpuFile.Position();
+            cpuFile.Align(16);
+            auto n = cpuFile.Position();
+
+            u32 maybeTransformBufferSize = cpuFile.ReadUint32();
+            cpuFile.Skip(destroyable.subpieces.size() * 36);
+            auto o = cpuFile.Position();
+            cpuFile.Align(16);
+            auto p = cpuFile.Position();
+
+
+            auto c = 2;
+        }
+
+        printf("Position at end of destroyables: %d\n", cpuFile.Position());
+        printf("Num destroyables: %d\n", numDestroyables);
         printf("\n");
+        //Todo: Read whatever data comes after this
+        //Todo: Read collision models at collision model offset. This is havok data 
     }
     else
     {
