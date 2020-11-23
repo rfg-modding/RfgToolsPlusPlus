@@ -100,7 +100,6 @@ std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFil
     u64 indexDataEnd = indexDataOffset + (IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize); //End of index data
     u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
     u64 vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
-    u64 firstVertexOffset = vertexDataOffset + (startIndex * VertexBufferConfig.VertexStride0); //Offset of first vertex for this submesh
 
     //Read index buffer
     gpuFile.SeekBeg(firstIndexOffset);
@@ -109,7 +108,7 @@ std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFil
     gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
 
     //Read vertex buffer
-    gpuFile.SeekBeg(firstVertexOffset);
+    gpuFile.SeekBeg(vertexDataOffset);
     u32 vertexBufferSize = VertexBufferConfig.NumVerts * VertexBufferConfig.VertexStride0;
     u8* vertexBuffer = new u8[vertexBufferSize];
     gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
