@@ -15,6 +15,9 @@ string to_string_precise(const T Value, const int Precision = 1)
 
 struct Vec3
 {
+    Vec3() {}
+    Vec3(f32 x_, f32 y_, f32 z_) : x(x_), y(y_), z(z_) {}
+
     f32 x = 0.0f;
     f32 y = 0.0f;
     f32 z = 0.0f;
