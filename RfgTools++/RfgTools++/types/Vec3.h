@@ -19,12 +19,12 @@ struct Vec3
     f32 y = 0.0f;
     f32 z = 0.0f;
 
-    Vec3 operator-(const Vec3& B)
+    Vec3 operator-(const Vec3& B) const
     {
         return Vec3{x - B.x, y - B.y, z - B.z};
     }
 
-    Vec3 operator+(const Vec3& B)
+    Vec3 operator+(const Vec3& B) const
     {
         return Vec3{ x + B.x, y + B.y, z + B.z };
     }
@@ -35,12 +35,12 @@ struct Vec3
         return *this;
     }
 
-    Vec3 operator/(f32 scalar)
+    Vec3 operator/(f32 scalar) const
     {
         return Vec3{ x / scalar, y / scalar, z / scalar };
     }
 
-    Vec3 operator*(f32 scalar)
+    Vec3 operator*(f32 scalar) const
     {
         return Vec3{ x * scalar, y * scalar, z * scalar };
     }
@@ -50,7 +50,7 @@ struct Vec3
         return sqrt(pow(B.x - x, 2) + pow(B.y - y, 2) + pow(B.z - z, 2));
     }
 
-    Vec3 Cross(const Vec3& B)
+    Vec3 Cross(const Vec3& B) const
     {
         Vec3 C;
         C.x = (y * B.z) - (z * B.y);
@@ -59,17 +59,17 @@ struct Vec3
         return C;
     }
 
-    f32 Magnitude()
+    f32 Magnitude() const
     {
         return sqrtf((x * x) + (y * y) + (z * z));
     }
 
-    Vec3 Normalize()
+    Vec3 Normalize() const
     {
         return *this / Magnitude();
     }
 
-    string String()
+    string String() const
     {
         return "{" 
                     + to_string_precise(x, 2) + ", "
