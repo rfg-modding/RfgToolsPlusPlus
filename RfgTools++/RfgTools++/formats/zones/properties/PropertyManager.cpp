@@ -18,11 +18,15 @@ std::unordered_map <u32, std::function<IZoneProperty* (BinaryReader& reader, u16
 std::unordered_map <u32, std::function<IZoneProperty* (BinaryReader& reader, u16 type, u16 size, u32 nameHash)>> PropertyManager::propertyTypes5_ = {};
 std::unordered_map <u32, std::function<IZoneProperty* (BinaryReader& reader, u16 type, u16 size, u32 nameHash)>> PropertyManager::propertyTypes6_ = {};
 bool PropertyManager::initialized_ = false;
+std::mutex PropertyManager::typesMutex_;
 
 void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& reader)
 {
+    typesMutex_.lock();
     if (!initialized_)
         Init();
+
+    typesMutex_.unlock();
 
     //Read properties
     for (u32 i = 0; i < object.NumProps; i++)

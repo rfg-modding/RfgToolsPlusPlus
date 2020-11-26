@@ -5,6 +5,7 @@
 #include <BinaryTools/BinaryReader.h>
 #include <unordered_map>
 #include <functional>
+#include <mutex>
 
 class IZoneProperty;
 
@@ -23,4 +24,5 @@ private:
     static std::unordered_map<u32, std::function<IZoneProperty*(BinaryReader& reader, u16 type, u16 size, u32 nameHash)>> propertyTypes5_;
     static std::unordered_map<u32, std::function<IZoneProperty*(BinaryReader& reader, u16 type, u16 size, u32 nameHash)>> propertyTypes6_;
     static bool initialized_;
+    static std::mutex typesMutex_;
 };
