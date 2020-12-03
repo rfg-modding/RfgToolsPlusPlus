@@ -21,6 +21,10 @@ public:
         }
         return nullptr;
     }
+    bool HasProperty(const string& propertyName)
+    {
+        return GetProperty(propertyName) != nullptr;
+    }
 
     //First 56 bytes of this class are the exact data layout found in zone files
     u32 ClassnameHash = 0;
