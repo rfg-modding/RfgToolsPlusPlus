@@ -5,6 +5,7 @@
 #include "formats/zones/properties/IZoneProperty.h"
 #include <BinaryTools/BinaryReader.h>
 
+//Orient + position zone object property. Has an objects position and orientation combined into one property.
 class OpProperty : public IZoneProperty
 {
 public:

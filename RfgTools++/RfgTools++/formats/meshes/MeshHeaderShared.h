@@ -2,6 +2,7 @@
 #include "common/Typedefs.h"
 #include <BinaryTools/BinaryReader.h>
 
+//Common mesh header used by static and character meshes (csmesh_pc and ccmesh_pc)
 class MeshHeaderShared
 {
 public:

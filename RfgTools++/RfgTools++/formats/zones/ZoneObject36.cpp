@@ -14,5 +14,6 @@ void ZoneObject36::Read(BinaryReader& reader)
     auto result = HashGuesser::GuessHashOriginString(ClassnameHash);
     Classname = result ? result.value() : "unknown";
 
+    //Read properties from binary blob at the end of the object
     PropertyManager::ReadObjectProperties(*this, reader);
 }

@@ -19,6 +19,6 @@ namespace MeshHelpers
         return std::span<T>((T*)in.data(), in.size_bytes() / sizeOfT);
     }
 
-
+    //Write binary vertex buffer to a .obj file
     bool WriteVerticesToObj(std::ofstream& obj, VertexFormat format, std::span<u8> vertexBufferBytes);
 }

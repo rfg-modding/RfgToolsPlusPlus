@@ -3,6 +3,7 @@
 #include "formats/zones/properties/IZoneProperty.h"
 #include <BinaryTools/BinaryReader.h>
 
+//String zone object property. 
 class StringProperty : public IZoneProperty
 {
 public:

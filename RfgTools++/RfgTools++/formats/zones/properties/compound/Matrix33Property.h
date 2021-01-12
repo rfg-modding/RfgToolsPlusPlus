@@ -4,6 +4,7 @@
 #include "formats/zones/properties/IZoneProperty.h"
 #include <BinaryTools/BinaryReader.h>
 
+//3x3 matrix zone object property. Commonly used to represent rotation/orientation.
 class Matrix33Property : public IZoneProperty
 {
 public:

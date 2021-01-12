@@ -2,6 +2,7 @@
 #include "common/Typedefs.h"
 #include "BinaryTools/BinaryReader.h"
 
+//Description of texture used by a submesh
 class TextureDesc
 {
 public:

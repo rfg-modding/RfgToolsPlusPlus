@@ -28,7 +28,7 @@ struct MemoryFile
     std::span<u8> Bytes;
 };
 
-//Packfile version 3 used in RFG and RFGR
+//Packfile version 3 used in RFG and RFGR (vpp_pc and str2_pc)
 class Packfile3
 {
 public:

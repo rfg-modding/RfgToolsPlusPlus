@@ -1,12 +1,14 @@
 #pragma once
 #include "common/Typedefs.h"
 
+//Mesh topologies used by RFG(R) meshes
 enum class PrimitiveTopology : u8
 {
     TriangleStrip = 0, //internally D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP
     TriangleList = 1, //internally D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST
 };
 
+//Vertex formats used by RFG(R) meshes
 enum class VertexFormat : u8
 {
     Pixlit = 0,

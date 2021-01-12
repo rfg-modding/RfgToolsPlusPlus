@@ -3,6 +3,8 @@
 #include "RfgTools++/types/Vec3.h"
 #include "BinaryTools/BinaryReader.h"
 
+//Metadata for a submesh. Many RFG(R) meshes actually consist of several submeshes.
+//In some cases these submeshes are different quality LODs (characters), in other cases they're all part of the mesh (buildings).
 class SubmeshData
 {
 public:

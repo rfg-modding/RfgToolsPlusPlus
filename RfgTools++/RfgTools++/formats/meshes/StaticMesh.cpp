@@ -70,6 +70,7 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
 
     //Todo: Read mesh_tag list after texture name list
     //Todo: Read havok data that is sometimes present here (see tharsis_gun_weapon.csmesh_pc). Has MCKH signature which is always with havok stuff
+    //Todo: Read character mesh specific data found here in ccmesh_pc files
 
     readHeader_ = true;
 }
@@ -119,17 +120,6 @@ std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFil
         .VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
         .IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
     };
-}
-
-void StaticMesh::Write(BinaryWriter& out)
-{
-    //Todo: Implement
-}
-
-void StaticMesh::Write(const string& path)
-{
-    BinaryWriter out(path);
-    Write(out);
 }
 
 //Todo: See if more of this function can be moved into MeshHelpers:: to reuse on other mesh formats

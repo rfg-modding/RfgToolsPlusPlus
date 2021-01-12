@@ -4,6 +4,7 @@
 #include "formats/zones/properties/IZoneProperty.h"
 #include <BinaryTools/BinaryReader.h>
 
+//3D vector zone object property. Commonly used to represent a position.
 class Vec3Property : public IZoneProperty
 {
 public:

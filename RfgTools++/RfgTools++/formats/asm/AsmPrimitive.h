@@ -4,6 +4,7 @@
 #include <BinaryTools/BinaryReader.h>
 #include <BinaryTools/BinaryWriter.h>
 
+//Data recorded about a str2_pc subfile. Stored in asm_pc files.
 class AsmPrimitive
 {
 public:

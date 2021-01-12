@@ -4,6 +4,7 @@
 #include <optional>
 #include <vector>
 
+//Version 10 of texture files used in RFG and RFGR (cpeg_pc and cvbm_pc)
 class PegFile10
 {
 public:

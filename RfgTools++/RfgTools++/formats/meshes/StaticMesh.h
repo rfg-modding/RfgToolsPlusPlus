@@ -20,6 +20,8 @@ struct MeshInstanceData
     std::span<u8> IndexBuffer;
 };
 
+//Static or character mesh used in RFG and RFGR (csmesh_pc and ccmesh_pc)
+//They're near identical except for some special data at the end of each file which isn't read yet (see end of StaticMesh::Read())
 class StaticMesh
 {
 public:
@@ -28,8 +30,7 @@ public:
     //Todo: Add support for reading data when theres > 1 submesh
     //Read raw data of a submesh. Must call Read to get data from cpu file first
     std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile, u32 index);
-    void Write(BinaryWriter& out);
-    void Write(const string& path);
+    //Write mesh data to a .obj file. Can be opened in 3d modelling software like blender
     void WriteToObj(const string& gpuFilePath, const string& outputFolderPath, const string& diffuseTexturePath = "", const string& specularTexturePath = "", const string& normalTexturePath = "");
 
     string Name;

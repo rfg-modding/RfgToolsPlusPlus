@@ -22,6 +22,7 @@ std::mutex PropertyManager::typesMutex_;
 
 void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& reader)
 {
+    //Ensure the properties are initialized. Mutex used to avoid thread deadlock as multiple territories can be loaded at once.
     typesMutex_.lock();
     if (!initialized_)
         Init();
@@ -31,6 +32,7 @@ void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& r
     //Read properties
     for (u32 i = 0; i < object.NumProps; i++)
     {
+        //Each property is prefixed by a type identifier and the size of the property data in bytes
         u16 type = reader.ReadUint16();
         u16 size = reader.ReadUint16();
         u32 propertyNameHash = reader.ReadUint32();
@@ -51,8 +53,6 @@ void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& r
         object.Properties.push_back(prop);
         reader.Align(4);
     }
-
-    auto a = 2;
 }
 
 IZoneProperty* PropertyManager::ReadProperty(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
@@ -105,12 +105,7 @@ IZoneProperty* PropertyManager::ReadProperty(BinaryReader& reader, u16 type, u16
 }                                                                                  \
 
 
-string Name;
-u32 Type = 0;
-u32 NameHash = 0;
-ZonePropertyType DataType = ZonePropertyType::None;
 
-//Todo: Consider other ways of handling properties. Not sure if this is the best way to go about it
 void PropertyManager::Init()
 {
     //Properties with the type value of 4
@@ -292,6 +287,7 @@ void PropertyManager::Init()
         //District flags property
         PropertyDefinition(district_flags, DistrictFlagsProperty),
 
+        //Todo: Support this property type
         //Constraint template property
         //PropertyDefinition(template, ConstraintTemplateProperty),
         //{
