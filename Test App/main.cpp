@@ -4,11 +4,64 @@
 #include "Common/filesystem/File.h"
 #include "RfgTools++/formats/packfiles/Packfile3.h"
 #include <iostream>
+#include <filesystem>
 #include <RfgTools++\formats\meshes\MeshDataBlock.h>
 #include <BinaryTools\BinaryWriter.h>
 
 int main()
 {
+    string packfilePath = "G:\\GOG\\Games\\Red Faction Guerrilla Re-Mars-tered\\data\\aaaaaa_terr01_l0.vpp_pc";
+    Packfile3 packfile(packfilePath);
+    packfile.ReadMetadata();
+    packfile.ExtractSubfiles("G:\\GOG\\Games\\Red Faction Guerrilla Re-Mars-tered\\data\\out\\");
+
+    return 0;
+
+    /*Extract contents of all packfiles*/
+    //auto files = std::filesystem::directory_iterator("G:\\_RFGR_Unpack\\data\\");
+    //for (auto& file : files)
+    //{
+    //    string ext = Path::GetExtension(file);
+    //    if (file.is_directory() || !(ext == ".vpp_pc" || ext == ".str2_pc"))
+    //        continue;
+
+    //    string packfilePath = file.path().string();
+    //    string outputPath = "G:\\_RFGR_Unpack\\data\\unpack\\" + Path::GetFileName(file) + "\\";
+    //    Path::CreatePath(outputPath);
+    //    std::cout << "Extracting " << Path::GetFileName(file) << "...";
+    //    Packfile3 packfile(packfilePath);
+    //    packfile.ReadMetadata();
+    //    packfile.ExtractSubfiles(outputPath);
+    //    std::cout << " Done!\n";
+    //}
+
+    /*Extract contents of all str2_pc files from previous step*/
+    auto subfiles = std::filesystem::recursive_directory_iterator("G:\\_RFGR_Unpack\\data\\unpack\\");
+    for (auto& file : subfiles)
+    {
+        string ext = Path::GetExtension(file);
+        if (file.is_directory() || ext != ".str2_pc")
+            continue;
+
+        string packfilePath = file.path().string();
+        string outputPath = Path::GetParentDirectory(file) + "\\subfiles\\" + Path::GetFileName(file) + "\\";
+        Path::CreatePath(outputPath);
+        std::cout << "Extracting " << Path::GetFileName(file) << "...";
+        Packfile3 packfile(packfilePath);
+        packfile.ReadMetadata();
+        packfile.ExtractSubfiles(outputPath);
+        std::cout << " Done!\n";
+    }
+
+    return 0;
+
+
+
+
+
+
+
+
     //string inputPath = "G:/RFG Unpack/data/misc.vpp_pc";
     //string outputPath = "G:/RFG Unpack 2/CppToolOutput/Unpack/";
 
@@ -188,6 +241,7 @@ int main()
         }
     };
 
+    std::cout << "Position at start of material block: " << cpuFile.Position() << "\n";
     std::vector<material_data_block> materials;
 
     for (u32 i = 0; i < numMaterials; i++)

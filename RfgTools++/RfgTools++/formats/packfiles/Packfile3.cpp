@@ -185,6 +185,11 @@ void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader)
     u32 index = 0;
     for (const auto& entry : Entries)
     {
+        if ("0h_c2124.str2_pc" == string(EntryNames[index]))
+        {
+            auto a = 2;
+        }
+
         //Read file data into buffer and write to separate file
         u8* buffer = new u8[entry.DataSize];
         reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
@@ -345,9 +350,15 @@ void Packfile3::FixEntryDataOffsets()
     if (Compressed && Condensed)
         return;
 
+    u32 index = 0;
     u64 runningDataOffset = 0; //Track relative offset from data section start
     for(auto& entry : Entries)
     {
+        if (string(EntryNames[index]) == "0h_c2124.str2_pc")
+        {
+            auto a = 2;
+        }
+
         //Set entry offset
         entry.DataOffset = runningDataOffset;
 
@@ -367,6 +378,7 @@ void Packfile3::FixEntryDataOffsets()
                 runningDataOffset += alignmentPad;
             }
         }
+        index++;
     }
 }
 
