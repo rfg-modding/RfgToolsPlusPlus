@@ -1,5 +1,6 @@
 #include "String.h"
 #include <algorithm>
+#include <regex>
 
 namespace String
 {
@@ -28,6 +29,13 @@ namespace String
         return Copy;
     }
 
+    string ToLower(s_view value)
+    {
+        std::string Copy(value); //Copy the string since we want to leave the original string intact
+        std::transform(Copy.begin(), Copy.end(), Copy.begin(), [](unsigned char c) { return std::tolower(c); });
+        return Copy;
+    }
+
     std::vector<std::string_view> SplitString(std::string_view view, std::string_view delimiter)
     {
         std::vector<std::string_view> output;
@@ -49,5 +57,23 @@ namespace String
         }
 
         return output;
+    }
+
+    string Replace(string value, const string& replace, const string& replaceWith)
+    {
+        return std::regex_replace(value, std::regex(replace), replaceWith);
+    }
+
+    bool EqualIgnoreCase(const string& str0, const string& str1)
+    {
+        string str0Lower = String::ToLower(str0);
+        string str1Lower = String::ToLower(str1);
+        return str0Lower == str1Lower;
+    }
+    bool EqualIgnoreCase(s_view str0, s_view str1)
+    {
+        string str0Lower = String::ToLower(str0);
+        string str1Lower = String::ToLower(str1);
+        return str0Lower == str1Lower;
     }
 }

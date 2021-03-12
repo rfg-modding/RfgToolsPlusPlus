@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <memory>
 
 //Signed ints
 using i8 = int8_t;
@@ -21,6 +22,15 @@ using f64 = double;
 //Misc types
 using string = std::string;
 using s_view = std::string_view;
+
+//Shorter / more useful name for std::shared_ptr
+template<typename T>
+using Handle = std::shared_ptr<T>;
+template<typename T, typename... Args>
+constexpr Handle<T> CreateHandle(Args&&... args)
+{
+    return std::make_shared<T>(std::forward<Args>(args)...);
+}
 
 static_assert(sizeof(i8) == 1);
 static_assert(sizeof(i16) == 2);

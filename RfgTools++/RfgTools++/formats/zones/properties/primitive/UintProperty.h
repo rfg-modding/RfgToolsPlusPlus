@@ -3,6 +3,7 @@
 #include "formats/zones/properties/IZoneProperty.h"
 #include <BinaryTools/BinaryReader.h>
 
+//Unsigned 32 bit integer zone object property
 class UintProperty : public IZoneProperty
 {
 public:

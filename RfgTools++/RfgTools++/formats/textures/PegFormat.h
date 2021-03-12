@@ -1,6 +1,7 @@
 #pragma once
 #include "common/Typedefs.h"
 
+//Image formats used by RFG and RFGR peg files (cpeg_pc and cvbm_pc)
 enum class PegFormat : u16
 {
     None = 0,

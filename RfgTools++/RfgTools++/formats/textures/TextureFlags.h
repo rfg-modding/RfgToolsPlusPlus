@@ -1,6 +1,7 @@
 #pragma once
 #include "common/Typedefs.h"
 
+//Texture flags possibly used by peg files
 enum class TextureFlags : u16
 {
     None = 0, // 0

@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <iostream>
 
+//Reads header and object data from a zone file (rfgzone_pc or layer_pc)
 void ZonePc36::Read(BinaryReader& reader)
 {
     //Read and validate header
@@ -16,10 +17,11 @@ void ZonePc36::Read(BinaryReader& reader)
     if (Header.Version != 36) //Only have seen and reversed version 36
         throw std::exception(("Error! Invalid zone file version. Expected 36, detected " + std::to_string(Header.Version)).c_str());
 
+    //Todo: Determine what the other flag bits mean
     //Read relational data if it's useful
-    //Todo: Determine district name string from hash
-    hasRelationalData_ = (Header.DistrictFlags & 5) == 0; //Todo: Get a better breakdown of all zone flag values the game cares about
-    //Todo: Figure out how to interpret this data. Enable this if it's useful
+    hasRelationalData_ = (Header.DistrictFlags & 5) == 0;
+
+    //Todo: Figure out how to interpret this data. Enable this if it's useful. See ZonePcRelationData36.h
     //reader.ReadToMemory(&RelationalData, sizeof(ZonePcRelationData36));
     if (hasRelationalData_)
         reader.Skip(87368); //For now we just skip it since it's not clear how to interpret that data yet
@@ -28,6 +30,7 @@ void ZonePc36::Read(BinaryReader& reader)
     if (Header.NumObjects == 0)
         return;
 
+    //Read zone objects
     Objects.reserve(Header.NumObjects);
     for (u32 i = 0; i < Header.NumObjects; i++)
     {
@@ -68,11 +71,12 @@ void ZonePc36::GenerateObjectHierarchy()
         //Find parent
         ZoneObjectNode36* maybeParent = GetTopLevelObject(object.Parent);
         //Todo: Search in other zones/files for parents and siblings + move this step into a different class. Likely need to check matching p_ and non p_ files
-        //Throw error if couldn't find parent. So far only seen single level object trees with parents in the same zone. This will detect things that don't fit that
+        //Make it a top level object if we can't find it's parent in this zone
         if (!maybeParent)
         {
-            //std::cout << "Warning in \"" << Name() << "\". Object " << object.Handle << " could not find it's parent with handle " << object.Parent << "\n";
-            break;
+            auto& hierarchyNode = ObjectsHierarchical.emplace_back();
+            hierarchyNode.Self = &object;
+            continue;
         }
 
 

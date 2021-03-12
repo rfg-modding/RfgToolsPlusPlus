@@ -1,5 +1,6 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "BinaryTools/BinaryReader.h"
 
 class RenderBlock
 {
@@ -10,6 +11,11 @@ public:
     u32 NumIndices = 0;
     u32 MinIndex = 0;
     u32 MaxIndex = 0;
+
+    void Read(BinaryReader& in)
+    {
+        in.ReadToMemory(this, sizeof(RenderBlock));
+    }
 };
 
 //This is mostly an alarm bell for if the size of this struct changes. It shouldn't unless the game gets updated or modders change how mesh loading works

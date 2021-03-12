@@ -6,6 +6,7 @@
 #include <BinaryTools/BinaryWriter.h>
 #include <span>
 
+//Entry for a sub-texture of peg file
 class PegEntry10
 {
 public:
@@ -24,10 +25,10 @@ public:
     u8 Fps;
     u8 MipLevels;
     u32 FrameSize;
-    u32 Next;
-    u32 Previous;
-    u32 Cache0;
-    u32 Cache1;
+    u32 Next; //Runtime only, can ignore
+    u32 Previous; //Runtime only, can ignore
+    u32 Cache0; //Runtime only, can ignore
+    u32 Cache1; //Runtime , can ignore
 
     //Extra data that's not in the file
     string Name;

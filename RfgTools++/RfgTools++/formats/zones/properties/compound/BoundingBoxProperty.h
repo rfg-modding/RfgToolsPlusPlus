@@ -4,6 +4,7 @@
 #include "formats/zones/properties/IZoneProperty.h"
 #include <BinaryTools/BinaryReader.h>
 
+//Bounding box zone object property
 class BoundingBoxProperty : public IZoneProperty
 {
 public:

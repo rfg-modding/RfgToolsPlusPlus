@@ -3,6 +3,7 @@
 #include "formats/zones/properties/IZoneProperty.h"
 #include <BinaryTools/BinaryReader.h>
 
+//Boolean zone object property. Possible values: True, False
 class BoolProperty : public IZoneProperty
 {
 public:
@@ -11,7 +12,7 @@ public:
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
         DataType = ZonePropertyType::Bool;
-        Data = (bool)reader.ReadUint8();
+        Data = (bool)reader.ReadUint8(); //Bool stored as a single byte in binary file
         return true;
     }
 };
