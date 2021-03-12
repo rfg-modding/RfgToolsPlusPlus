@@ -71,11 +71,12 @@ void ZonePc36::GenerateObjectHierarchy()
         //Find parent
         ZoneObjectNode36* maybeParent = GetTopLevelObject(object.Parent);
         //Todo: Search in other zones/files for parents and siblings + move this step into a different class. Likely need to check matching p_ and non p_ files
-        //Throw error if couldn't find parent. So far only seen single level object trees with parents in the same zone. This will detect things that don't fit that
+        //Make it a top level object if we can't find it's parent in this zone
         if (!maybeParent)
         {
-            //std::cout << "Warning in \"" << Name() << "\". Object " << object.Handle << " could not find it's parent with handle " << object.Parent << "\n";
-            break;
+            auto& hierarchyNode = ObjectsHierarchical.emplace_back();
+            hierarchyNode.Self = &object;
+            continue;
         }
 
 
