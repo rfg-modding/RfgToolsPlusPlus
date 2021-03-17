@@ -11,6 +11,8 @@ public:
 
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
+        Type = type;
+        NameHash = nameHash;
         DataType = ZonePropertyType::String;
         Data = reader.ReadFixedLengthString(size);
         if (reader.PeekChar() == 0)

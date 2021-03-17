@@ -13,6 +13,7 @@
 #include "RfgTools++/formats/zones/properties/special/DistrictFlagsProperty.h"
 #include "RfgTools++/formats/zones/properties/compound/ListProperty.h"
 #include "RfgTools++/formats/zones/properties/special/NavpointDataProperty.h"
+#include "RfgTools++/formats/zones/properties/special/UnknownTypeProperty.h"
 
 std::unordered_map <u32, std::function<IZoneProperty* (BinaryReader& reader, u16 type, u16 size, u32 nameHash)>> PropertyManager::propertyTypes4_ = {};
 std::unordered_map <u32, std::function<IZoneProperty* (BinaryReader& reader, u16 type, u16 size, u32 nameHash)>> PropertyManager::propertyTypes5_ = {};
@@ -41,15 +42,15 @@ void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& r
         //Attempt to read property data
         IZoneProperty* prop = ReadProperty(reader, type, size, propertyNameHash);
 
-        //Skip property if read failed
+        //Use UnknownTypeProperty if read fails. Preserves property data in internal byte buffer
         if (!prop)
         {
             reader.SeekBeg(propertyStartPos);
-            reader.Skip(size);
+            prop = new UnknownTypeProperty();
+            prop->Read(reader, type, size, propertyNameHash);
         }
-        //Todo: Make UnknownDataProperty for failed reads / unknown property types to preserve data. Will be needed when saving is added
 
-        //Else add it to the list & align to next property
+        //Store property & align to next property
         object.Properties.push_back(prop);
         reader.Align(4);
     }

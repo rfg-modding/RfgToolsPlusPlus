@@ -18,10 +18,16 @@ public:
 
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
+        Type = type;
+        NameHash = nameHash;
         DataType = ZonePropertyType::NavpointData;
 
         if (size != 28)
-            throw std::runtime_error("Encountered NavpointData property whos size does not equal 28 bytes! Unsupported!");
+        {
+            //Todo: Need to add a logging callback to RfgTools++ so tools like Nanoforge can log these types of messages with their logging system.
+            printf("Encountered NavpointData property whos size does not equal 28 bytes! Unsupported!\n");
+            return false;
+        }
 
         NavpointType = reader.ReadUint32();
         UnkFlag1 = reader.ReadUint32();

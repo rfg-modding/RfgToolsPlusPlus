@@ -14,6 +14,8 @@ public:
 
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
+        Type = type;
+        NameHash = nameHash;
         DataType = ZonePropertyType::List;
 
         //Ensure the list size matches T. E.g. If the list is 13 bytes it couldn't possible hold a u32 since 13 isn't cleanly divisible by 4.

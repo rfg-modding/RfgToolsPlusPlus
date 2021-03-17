@@ -12,6 +12,8 @@ public:
 
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
+        Type = type;
+        NameHash = nameHash;
         DataType = ZonePropertyType::Matrix33;
 
         Data.rvec.x = reader.ReadFloat();

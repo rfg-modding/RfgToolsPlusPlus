@@ -19,13 +19,16 @@ enum class ZonePropertyType
     DistrictFlags,
     NavpointData,
     List,
-    Op
+    Op,
+    Unknown
 };
 
 //Interface that zone object properties must implement
 class IZoneProperty
 {
 public:
+    //Virtual destructor. Needed for any heap allocated resources of properties to be properly disposed of.
+    virtual ~IZoneProperty() {};
     //Read property binary data from zone file. Type and size have already been read when this is called.
     virtual bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash) = 0;
 
