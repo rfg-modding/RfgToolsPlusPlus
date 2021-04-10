@@ -76,4 +76,19 @@ namespace String
         string str1Lower = String::ToLower(str1);
         return str0Lower == str1Lower;
     }
+    size_t FindNthCharacterFromBack(s_view str, char character, u32 n)
+    {
+        size_t targetPos = 0;
+        u32 foundCount = 0;
+        for (size_t i = str.size() - 1; i > 0; i--)
+        {
+            if (str[i] == '/')
+            {
+                foundCount++;
+                if (foundCount == n)
+                    targetPos = i;
+            }
+        }
+        return targetPos;
+    }
 }

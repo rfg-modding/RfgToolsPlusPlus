@@ -15,4 +15,6 @@ namespace String
     //Returns true if str0 and str1 are equal. Ignores case
     bool EqualIgnoreCase(const string& str0, const string& str1);
     bool EqualIgnoreCase(s_view str0, s_view str1);
+    //Get nth character from the back of str. E.g. FindNthCharacterFromBack("a/a/a/", '/', 2) would return 3
+    size_t FindNthCharacterFromBack(s_view str, char character, u32 n);
 }
