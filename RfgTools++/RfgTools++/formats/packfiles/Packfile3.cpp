@@ -820,7 +820,7 @@ bool Packfile3::Contains(s_view subfileName, u32& index)
 {
     for (u32 i = 0; i < Entries.size(); i++)
     {
-        if (EntryNames[i] == subfileName)
+        if (String::EqualIgnoreCase(EntryNames[i], subfileName))
         {
             index = i;
             return true;
