@@ -529,6 +529,21 @@ void Packfile3::ReadAsmFiles()
 
         delete[] data.value().data();
     }
+
+    //Alphabetically sort
+    //First sort asm_pc files
+    std::sort(AsmFiles.begin(), AsmFiles.end(), [](AsmFile5& a, AsmFile5& b) -> bool { return a.Name < b.Name; });
+    for (auto& asmFile : AsmFiles)
+    {
+        //Then sort containers
+        std::sort(asmFile.Containers.begin(), asmFile.Containers.end(), [](AsmContainer& a, AsmContainer& b) -> bool { return a.Name < b.Name; });
+
+        //Then sort primitives
+        for (auto& container : asmFile.Containers)
+        {
+            std::sort(container.Primitives.begin(), container.Primitives.end(), [](AsmPrimitive& a, AsmPrimitive& b) -> bool { return a.Name < b.Name; });
+        }
+    }
 }
 
 void Packfile3::Pack(const string& inputPath, const string& outputPath, bool compressed, bool condensed)
