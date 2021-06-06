@@ -452,6 +452,7 @@ std::optional<std::span<u8>> Packfile3::ExtractSingleFile(s_view name, bool full
         delete reader;
         delete[] inputBuffer;
         delete[] outputBuffer;
+        return {};
     }
     else if (Compressed)
     {

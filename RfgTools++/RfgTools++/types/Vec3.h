@@ -50,7 +50,7 @@ struct Vec3
 
     f32 Distance(const Vec3& B) const
     {
-        return sqrt(pow(B.x - x, 2) + pow(B.y - y, 2) + pow(B.z - z, 2));
+        return sqrtf(powf(B.x - x, 2.0f) + powf(B.y - y, 2.0f) + powf(B.z - z, 2.0f));
     }
 
     Vec3 Cross(const Vec3& B) const

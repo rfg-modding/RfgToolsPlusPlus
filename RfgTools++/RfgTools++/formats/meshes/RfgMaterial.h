@@ -70,6 +70,6 @@ public:
 
         //Validate data read by checking if we read the amount of data we expected to
         if (data.Position() != materialDataStart + materialDataSize)
-            std::runtime_error("Material data block read failed. Unexpected size. Expected it to be " + std::to_string(materialDataSize) + " bytes. Was really " + std::to_string(data.Position() - materialDataStart) + " bytes");
+            throw std::runtime_error("Material data block read failed. Unexpected size. Expected it to be " + std::to_string(materialDataSize) + " bytes. Was really " + std::to_string(data.Position() - materialDataStart) + " bytes");
     }
 };

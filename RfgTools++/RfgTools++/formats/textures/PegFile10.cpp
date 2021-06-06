@@ -104,7 +104,7 @@ void PegFile10::Cleanup()
 {
     for (auto& entry : Entries)
     {
-        if (!entry.RawData.data())
+        if (entry.RawData.data())
         {
             delete[] entry.RawData.data();
         }

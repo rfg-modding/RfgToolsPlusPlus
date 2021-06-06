@@ -40,7 +40,7 @@ struct Vec2
 
     f32 Distance(const Vec2& B) const
     {
-        return sqrt(pow(B.x - x, 2) + pow(B.y - y, 2));
+        return sqrtf(powf(B.x - x, 2.0f) + powf(B.y - y, 2.0f));
     }
 
     f32 Magnitude()
