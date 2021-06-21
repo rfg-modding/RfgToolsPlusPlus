@@ -50,6 +50,31 @@ namespace Hash
         return hash;
     }
 
+    //Todo: Simplify this and determine if it's different than HashVolitionCRC()
+    /*
+        I suspect it's the same or close to HashVolitionCRC.
+        However HashVolitionCRC() doesn't properly recreate the key hashes in rfglocatext files while HashVolitionCRCAlt() does.
+        So either they're different hashing methods or HashVolitionCRC() has a bug in this implementation
+    */
+    u32 HashVolitionCRCAlt(const string& input, u32 hash)
+    {
+        char* str = (char*)input.data();
+        char c = *str;
+        u32 temp = ~hash;
+        while (c != '\0')
+        {
+            str++;
+            if ((u8)(c + 191U) < 26)
+                c += ' ';
+
+            temp = temp >> 8 ^ _CrcVolitionTable[((int)c ^ temp) & 255];
+
+            c = *str;
+        }
+
+        return ~temp;
+    }
+
     u32 HashVolition(const string& input)
     {
         string inputLowercase = String::ToLower(input);

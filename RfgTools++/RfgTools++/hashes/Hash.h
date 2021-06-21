@@ -22,11 +22,14 @@
  *    distribution.
  */
 
+//Note: HashVolitionCRCAlt() was not part of the original source
+
 #pragma once
 #include "common/Typedefs.h"
 
 namespace Hash
 {
     u32 HashVolitionCRC(const string& input, u32 hash);
+    u32 HashVolitionCRCAlt(const string& input, u32 hash);
     u32 HashVolition(const string& input);
 }

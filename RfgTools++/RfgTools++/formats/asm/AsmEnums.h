@@ -272,8 +272,6 @@ static string to_string(ContainerType value)
     }
 }
 
-//10am 19th
-
 static string to_string(PrimitiveType value)
 {
     switch (value)
