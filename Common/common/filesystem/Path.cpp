@@ -62,6 +62,25 @@ namespace Path
         return std::filesystem::path(FullPath).extension().string();
     }
 
+    string GetExtensionMultiLevel(const string& path)
+    {
+        size_t firstPos = path.find_first_of('.');
+        if (firstPos == string::npos)
+            return "";
+        else
+            return path.substr(firstPos);
+    }
+
+    string GetFileNameNoExtensionMultiLevel(const string& path)
+    {
+        string filenameWithExt = GetFileName(path);
+        size_t firstPos = filenameWithExt.find_first_of('.');
+        if (firstPos == string::npos)
+            return filenameWithExt;
+        else
+            return filenameWithExt.substr(0, firstPos);
+    }
+
     void CreatePath(const string& fullPath)
     {
         if (!std::filesystem::exists(fullPath))
