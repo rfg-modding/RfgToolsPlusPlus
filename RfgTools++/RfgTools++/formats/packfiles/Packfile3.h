@@ -48,7 +48,8 @@ public:
     //Reads header, entries, and filenames from packfile
     void ReadMetadata(BinaryReader* reader = nullptr);
     //Extracts subfiles to outputPath
-    void ExtractSubfiles(const string& outputPath, bool writeStreamsFile = false);
+    //preferSpeed = Uses alternative extraction method that's faster but uses more memory.
+    void ExtractSubfiles(const string& outputPath, bool writeStreamsFile = false, bool preferSpeed = false);
     //Todo: Make the way this functions returned memory must be freed more obvious. Currently odd and easy to mess up
     //Extracts subfiles in memory and returns it. NOTE: This overload only supports C&C packfiles and the user must free the returned files memory.
     //Also note that you only need to free the first file since the extraction method decompresses them this way
@@ -84,9 +85,9 @@ private:
     void FixEntryDataOffsets();
     u32 GetAlignmentPad(u64 position);
     bool Contains(s_view subfileName, u32& index);
-    void ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader);
-    void ExtractCompressed(const string& outputPath, BinaryReader& reader);
-    void ExtractDefault(const string& outputPath, BinaryReader& reader);
+    void ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader, bool preferSpeed = false);
+    void ExtractCompressed(const string& outputPath, BinaryReader& reader, bool preferSpeed = false);
+    void ExtractDefault(const string& outputPath, BinaryReader& reader, bool preferSpeed = false);
 
     static void ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths);
 

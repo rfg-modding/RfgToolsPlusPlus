@@ -194,7 +194,6 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_));
     for (int i = 0; i < Header.NameBlockSize - 1; i++)
     {
-        auto pos6 = reader->Position();
         if (filenamesBuffer_[i] == '\0')
             EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_) + i + 1);
     }
@@ -206,7 +205,7 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
         delete reader;
 }
 
-void Packfile3::ExtractSubfiles(const string& outputPath, bool writeStreamsFile)
+void Packfile3::ExtractSubfiles(const string& outputPath, bool writeStreamsFile, bool preferSpeed)
 {
     //Create reader
     BinaryReader* reader = nullptr;
@@ -234,11 +233,11 @@ void Packfile3::ExtractSubfiles(const string& outputPath, bool writeStreamsFile)
     //Todo:     - For very large files add an option to stream in data to reduce memory usage
     //Extract data to files. Pick method based on flags
     if (Compressed && Condensed)
-        ExtractCompressedAndCondensed(outputPath, *reader);
+        ExtractCompressedAndCondensed(outputPath, *reader, preferSpeed);
     else if(Compressed)
-        ExtractCompressed(outputPath, *reader);
+        ExtractCompressed(outputPath, *reader, preferSpeed);
     else
-        ExtractDefault(outputPath, *reader);
+        ExtractDefault(outputPath, *reader, preferSpeed);
 
     //@streams.xml contains files in packfile and their order
     if (writeStreamsFile)
@@ -286,9 +285,8 @@ std::vector<MemoryFile> Packfile3::ExtractSubfiles(bool writeStreamsFile)
     return output;
 }
 
-void Packfile3::ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader)
+void Packfile3::ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader, bool preferSpeed)
 {
-    //Currently reads compressed data into one huge buffer and inflates, then writes out
     //Read all compressed data into buffer and inflate it
     u8* inputBuffer = new u8[Header.CompressedDataSize];
     u8* outputBuffer = new u8[Header.DataSize];
@@ -308,44 +306,90 @@ void Packfile3::ExtractCompressedAndCondensed(const string& outputPath, BinaryRe
     delete[] outputBuffer;
 }
 
-void Packfile3::ExtractCompressed(const string& outputPath, BinaryReader& reader)
+void Packfile3::ExtractCompressed(const string& outputPath, BinaryReader& reader, bool preferSpeed)
 {
-    //Simple implementation that reads each subfile in from packfile, inflates data, and writes them out
-    u32 index = 0;
-    for (const auto& entry : Entries)
+    if (preferSpeed) //Read subfiles into one big buffer then decompress and write to disk
     {
-        //Read file data into buffer and write to separate file
-        u8* inputBuffer = new u8[entry.CompressedDataSize];
-        reader.ReadToMemory(inputBuffer, entry.CompressedDataSize);
-        reader.Align(2048); //Compressed offset not stored in packfile. Just read data and align to next block
+        //Determine max decompressed file size so we can allocate the buffer once
+        auto maxDataSize = std::ranges::max_element(Entries, [](const Packfile3Entry& a, const Packfile3Entry& b) { return a.DataSize < b.DataSize; });
+        
+        //Allocate buffers and read compressed data
+        u8* inputBuffer = new u8[Header.CompressedDataSize];
+        u8* outputBuffer = new u8[maxDataSize->DataSize];
+        reader.SeekBeg(dataBlockOffset_);
+        reader.ReadToMemory(inputBuffer, Header.CompressedDataSize);
 
-        //Create buffer for decompressed data and inflate, then write to file
-        u8* outputBuffer = new u8[entry.DataSize];
-        Compression::Inflate({ inputBuffer, entry.CompressedDataSize }, { outputBuffer, entry.DataSize });
-        File::WriteToFile(outputPath + EntryNames[index], { outputBuffer, entry.DataSize });
+        //Decompress subfiles and write to disk
+        u32 index = 0;
+        u64 offset = 0;
+        for (const auto& entry : Entries)
+        {
+            Compression::Inflate({ inputBuffer + offset, entry.CompressedDataSize }, { outputBuffer, entry.DataSize });
+            File::WriteToFile(outputPath + EntryNames[index], { outputBuffer, entry.DataSize });
+            offset += entry.CompressedDataSize;
+            index++;
+        }
 
-        //Delete buffers after use
         delete[] inputBuffer;
         delete[] outputBuffer;
-        index++;
+    }
+    else
+    {
+        //Read, decompress, and write to disk each subfile one by one.
+        u32 index = 0;
+        for (const auto& entry : Entries)
+        {
+            //Read subfile data
+            u8* inputBuffer = new u8[entry.CompressedDataSize];
+            reader.ReadToMemory(inputBuffer, entry.CompressedDataSize);
+            reader.Align(2048); //Compressed offset not stored in packfile. Just read data and align to next block
+
+            //Decompress subfile and write to disk
+            u8* outputBuffer = new u8[entry.DataSize];
+            Compression::Inflate({ inputBuffer, entry.CompressedDataSize }, { outputBuffer, entry.DataSize });
+            File::WriteToFile(outputPath + EntryNames[index], { outputBuffer, entry.DataSize });
+
+            delete[] inputBuffer;
+            delete[] outputBuffer;
+            index++;
+        }
     }
 }
 
-void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader)
+void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader, bool preferSpeed)
 {
-    //Simple implementation that reads each subfile in from packfile and writes them out
-    u32 index = 0;
-    for (const auto& entry : Entries)
+    if (preferSpeed) //Faster but uses more memory. Up to ~6.7GB, the size of the largest vpp_pc
     {
-        //Read file data into buffer and write to separate file
-        u8* buffer = new u8[entry.DataSize];
-        reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
-        reader.ReadToMemory(buffer, entry.DataSize);
-        File::WriteToFile(outputPath + EntryNames[index], {buffer, entry.DataSize});
+        //Read into one big buffer
+        size_t realDataSize = Entries.back().DataOffset + (u64)Entries.back().DataSize;
+        u8* buffer = new u8[realDataSize];
+        reader.SeekBeg(dataBlockOffset_);
+        reader.ReadToMemory(buffer, realDataSize);
 
-        //Delete buffer after use
+        //Write subfiles to disk from buffer
+        u32 index = 0;
+        for (const auto& entry : Entries)
+        {
+            File::WriteToFile(outputPath + EntryNames[index], { buffer + entry.DataOffset, entry.DataSize });
+            index++;
+        }
         delete[] buffer;
-        index++;
+    }
+    else //Slower but only uses as much memory as the largest subfile. Speed difference is negligible except or largest packfiles
+    {
+        //Read subfiles into buffer and write to disk one by one
+        u32 index = 0;
+        for (const auto& entry : Entries)
+        {
+            //Read subfile to buffer and write to disk
+            u8* buffer = new u8[entry.DataSize];
+            reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
+            reader.ReadToMemory(buffer, entry.DataSize);
+            File::WriteToFile(outputPath + EntryNames[index], {buffer, entry.DataSize});
+        
+            delete[] buffer;
+            index++;
+        }
     }
 }
 
