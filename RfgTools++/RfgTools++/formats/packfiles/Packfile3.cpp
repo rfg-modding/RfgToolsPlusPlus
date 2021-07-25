@@ -265,6 +265,7 @@ std::vector<MemoryFile> Packfile3::ExtractSubfiles(bool writeStreamsFile)
     //Read all compressed data into buffer and inflate it
     u8* inputBuffer = new u8[Header.CompressedDataSize];
     u8* outputBuffer = new u8[Header.DataSize];
+    reader->SeekBeg(dataBlockOffset_);
     reader->ReadToMemory(inputBuffer, Header.CompressedDataSize);
     Compression::Inflate({ inputBuffer, Header.CompressedDataSize }, { outputBuffer, Header.DataSize });
 
