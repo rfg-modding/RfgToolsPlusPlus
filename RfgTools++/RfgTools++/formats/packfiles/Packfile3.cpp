@@ -60,7 +60,7 @@ Packfile3::Packfile3(const Packfile3& other) //Copy constructor
     //Update entry name ptrs to new filename buffer
     EntryNames.clear();
     if(Header.NameBlockSize > 0)
-    { 
+    {
         EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_));
         for (int i = 0; i < Header.NameBlockSize - 1; i++)
         {
@@ -188,7 +188,7 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     filenamesBuffer_ = new u8[Header.NameBlockSize];
     reader->ReadToMemory(filenamesBuffer_, Header.NameBlockSize);
     reader->Align(2048); //Align to reach next data block start
-    
+
     //Make array of pointers to each string for easy access. Actual string data is still held in single heap buffer
     //Note: Tested using std::string and it took about twice as long due to copying + more allocating. Keep in mind if ever want to switch this to use std::string
     EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_));
@@ -417,7 +417,7 @@ std::optional<std::span<u8>> Packfile3::ExtractSingleFile(s_view name, bool full
         reader = new BinaryReader(buffer_);
 
     Packfile3Entry& entry = Entries[targetIndex];
-    
+
     //This option is stupidly inefficient and only done as a fallback for str2_pc files right now
     if (Compressed && Condensed)
     {
@@ -522,7 +522,7 @@ void Packfile3::ReadAsmFiles()
             for (auto& name : EntryNames)
                 if (iterator->Name + ".str2_pc" == name)
                     foundContainer = true;
-            
+
             if (!foundContainer)
                 iterator = asmFile.Containers.erase(iterator);
             else
@@ -530,21 +530,6 @@ void Packfile3::ReadAsmFiles()
         }
 
         delete[] data.value().data();
-    }
-
-    //Alphabetically sort
-    //First sort asm_pc files
-    std::sort(AsmFiles.begin(), AsmFiles.end(), [](AsmFile5& a, AsmFile5& b) -> bool { return a.Name < b.Name; });
-    for (auto& asmFile : AsmFiles)
-    {
-        //Then sort containers
-        std::sort(asmFile.Containers.begin(), asmFile.Containers.end(), [](AsmContainer& a, AsmContainer& b) -> bool { return a.Name < b.Name; });
-
-        //Then sort primitives
-        for (auto& container : asmFile.Containers)
-        {
-            std::sort(container.Primitives.begin(), container.Primitives.end(), [](AsmPrimitive& a, AsmPrimitive& b) -> bool { return a.Name < b.Name; });
-        }
     }
 }
 
@@ -571,7 +556,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
     std::vector<string> filenames = {};
     std::vector<Packfile3EntryExt> entries = {};
     std::vector<std::filesystem::directory_entry> subfilePaths = {};
-    
+
     string extension = Path::GetExtension(outputPath);
     bool usingStreamsFile = (extension == ".str2_pc");
     bool isStr2 = (extension == ".str2_pc");
@@ -732,7 +717,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
             //Read subfile data and compress it
             std::vector<char> subFileData = File::ReadAllBytes(entry.FullPath);
             Compression::DeflateResult compressedData = Compression::Deflate({ (u8*)subFileData.data(), subFileData.size() });
-            
+
             //Write compressed data to file
             out.WriteFromMemory(compressedData.Buffer, compressedData.DataSize);
             out.Flush();
