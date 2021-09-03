@@ -156,8 +156,11 @@ void TerrainLowLod::Read(BinaryReader& cpuFile, const string& name)
 		for (auto& cell : SingleUndergrowthCellData)
 			numSingleUndergrowths += cell.NumSingleUndergrowth;
 
-		//Todo: Use single_undergrowth_data struct here
-		cpuFile.Skip(numSingleUndergrowths * 24);
+		for (u32 i = 0; i < numSingleUndergrowths; i++)
+		{
+			auto& undergrowth = SingleUndergrowthData.emplace_back();
+			undergrowth.Read(cpuFile);
+		}
 
 		//Todo: Properly calculate offset instead of using this hack
 		cpuFile.Align(4);
