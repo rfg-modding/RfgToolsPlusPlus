@@ -430,30 +430,15 @@ std::optional<std::span<u8>> Packfile3::ExtractSingleFile(s_view name, bool full
         reader->ReadToMemory(inputBuffer, Header.CompressedDataSize);
         Compression::Inflate({ inputBuffer, Header.CompressedDataSize }, { outputBuffer, Header.DataSize });
 
-        //Extract each subfile. Return target if found
-        u32 index = 0;
-        for (const auto& entry : Entries)
-        {
-            if (EntryNames[index] == name)
-            {
-                //Copy data we want into new buffer
-                u8* singleFileBuffer = new u8[entry.DataSize];
-                memcpy(singleFileBuffer, outputBuffer + entry.DataOffset, entry.DataSize);
+        //Copy data we want into new buffer
+        u8* singleFileBuffer = new u8[entry.DataSize];
+        memcpy(singleFileBuffer, outputBuffer + entry.DataOffset, entry.DataSize);
 
-                //Delete the rest of the data
-                delete reader;
-                delete[] inputBuffer;
-                delete[] outputBuffer;
-                return std::span<u8>{ singleFileBuffer, entry.DataSize };
-            }
-            index++;
-        }
-
-        //Delete buffers after use
+        //Delete the rest of the data
         delete reader;
         delete[] inputBuffer;
         delete[] outputBuffer;
-        return {};
+        return std::span<u8>{ singleFileBuffer, entry.DataSize };
     }
     else if (Compressed)
     {
