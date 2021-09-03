@@ -4,6 +4,12 @@
 #include <span>
 #include <fstream>
 
+struct MeshInstanceData
+{
+    std::span<u8> VertexBuffer;
+    std::span<u8> IndexBuffer;
+};
+
 namespace MeshHelpers
 {
     //Converts a byte span to a std::span<T>
@@ -14,7 +20,7 @@ namespace MeshHelpers
         u32 sizeOfT = sizeof(T);
         if (in.size_bytes() % sizeof(T) != 0)
             throw std::runtime_error("Passed std::span<u8> to ToTypedSpan with a size that isn't cleanly divisible by T. T = " + string(typeid(T).name()));
-        
+
         //Return typed span
         return std::span<T>((T*)in.data(), in.size_bytes() / sizeOfT);
     }

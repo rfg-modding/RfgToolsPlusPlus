@@ -49,7 +49,7 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
         RenderBlock& renderBlock = RenderBlocks.emplace_back();
         renderBlock.Read(cpuFile);
     }
-    
+
     //Todo: Compare with previous crc and report error if they don't match
     u32 MeshSimpleCrc2 = cpuFile.ReadUint32();
 

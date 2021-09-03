@@ -74,10 +74,10 @@ struct Vec3
 
     string String() const
     {
-        return "{" 
+        return "{"
                     + to_string_precise(x, 2) + ", "
                     + to_string_precise(y, 2) + ", "
-                    + to_string_precise(z, 2) + 
+                    + to_string_precise(z, 2) +
                 "}";
     }
 };

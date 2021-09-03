@@ -20,13 +20,13 @@ public:
     void Read(BinaryReader& data, u32 materialListOffset)
     {
         //Material map data
-        u32 materialMapOffset = data.Position(); //Todo: Could this be alignment? 
+        u32 materialMapOffset = data.Position(); //Todo: Could this be alignment?
         MaterialsOffsetRelative = data.ReadUint32();
         NumMaterials = data.ReadUint32();
 
         //Seek to material offset list
         data.SeekBeg(materialListOffset);
-        
+
         //Read list of material offsets
         for (u32 i = 0; i < NumMaterials; i++)
         {

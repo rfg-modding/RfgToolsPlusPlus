@@ -3,6 +3,7 @@
 #include "MeshHeaderShared.h"
 #include "SubmeshData.h"
 #include "RenderBlock.h"
+#include "MeshHelpers.h"
 #include "MeshEnums.h"
 #include "MaterialBlock.h"
 #include "VertexBufferData.h"
@@ -14,12 +15,6 @@
 #include <vector>
 #include <span>
 
-struct MeshInstanceData
-{
-    std::span<u8> VertexBuffer;
-    std::span<u8> IndexBuffer;
-};
-
 //Static or character mesh used in RFG and RFGR (csmesh_pc and ccmesh_pc)
 //They're near identical except for some special data at the end of each file which isn't read yet (see end of StaticMesh::Read())
 class StaticMesh
@@ -27,7 +22,6 @@ class StaticMesh
 public:
     //Read header data from cpu file
     void Read(BinaryReader& reader, const string& name, u32 signature, u32 version);
-    //Todo: Add support for reading data when theres > 1 submesh
     //Read raw data of a submesh. Must call Read to get data from cpu file first
     std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile, u32 index);
     //Write mesh data to a .obj file. Can be opened in 3d modelling software like blender
