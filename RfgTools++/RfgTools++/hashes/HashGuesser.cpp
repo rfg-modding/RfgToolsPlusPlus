@@ -4,6 +4,7 @@
 std::unordered_map<u32, string> HashGuesser::hashDictionary_ = {};
 std::unordered_map<u32, string> HashGuesser::hashDictionaryAlt_ = {};
 bool HashGuesser::initialized_ = false;
+std::mutex HashGuesser::mutex_;
 
 string stringList[] =
 {
@@ -214,7 +215,7 @@ string stringList[] =
     "delivery_type", "pair_number", "start_node", "delivery_flags",
     "best_time",
 
-    //Bftp node props 
+    //Bftp node props
     "tag_node", "pair_number", "bftp_flags", "collected", "enabled_bomb",
 
     //Marauder ambush region props
@@ -339,8 +340,11 @@ string stringList[] =
 
 std::optional<string> HashGuesser::GuessHashOriginString(u32 hash)
 {
+    mutex_.lock();
     if (!initialized_)
         FillHashDictionary();
+
+    mutex_.unlock();
 
     auto result = hashDictionary_.find(hash);
     if (result != hashDictionary_.end())
@@ -360,6 +364,5 @@ void HashGuesser::FillHashDictionary()
         hashDictionary_[Hash::HashVolitionCRC(name, 0)] = name;
         hashDictionaryAlt_[Hash::HashVolition(name)] = name;
     }
-
     initialized_ = true;
 }

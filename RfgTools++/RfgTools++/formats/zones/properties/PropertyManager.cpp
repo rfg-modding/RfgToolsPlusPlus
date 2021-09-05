@@ -23,7 +23,7 @@ std::mutex PropertyManager::typesMutex_;
 
 void PropertyManager::ReadObjectProperties(ZoneObject36& object, BinaryReader& reader)
 {
-    //Ensure the properties are initialized. Mutex used to avoid thread deadlock as multiple territories can be loaded at once.
+    //Ensure the properties are initialized. Mutex used to avoid multiple threads initializing it
     typesMutex_.lock();
     if (!initialized_)
         Init();
@@ -325,4 +325,6 @@ void PropertyManager::Init()
         //Navpoint data property
         PropertyDefinition(navpoint_data, NavpointDataProperty),
     };
+
+    initialized_ = true;
 }

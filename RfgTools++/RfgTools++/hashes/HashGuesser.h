@@ -2,6 +2,7 @@
 #include "common/Typedefs.h"
 #include <optional>
 #include <unordered_map>
+#include <mutex>
 
 class HashGuesser
 {
@@ -14,4 +15,5 @@ private:
     static std::unordered_map<u32, string> hashDictionary_;
     static std::unordered_map<u32, string> hashDictionaryAlt_;
     static bool initialized_;
+    static std::mutex mutex_; //Used to avoid multiple threads calling FillHashDictionary at once if it's the first use
 };
