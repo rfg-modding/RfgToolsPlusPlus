@@ -26,8 +26,8 @@ class TerrainLowLod
 public:
 	//Read header data from cpu file
 	void Read(BinaryReader& cpuFile, const string& name);
-    //Read raw data of a submesh. Must call Read to get data from cpu file first
-    std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile, u32 index);
+    //Read vertex and index buffers of a mesh (low lod terrain files contain 9). Must call Read to get data from cpu file first
+    std::optional<MeshInstanceData> ReadMeshData(BinaryReader& gpuFile, u32 index);
 
     //Header data - 36 bytes
     u32 Signature;

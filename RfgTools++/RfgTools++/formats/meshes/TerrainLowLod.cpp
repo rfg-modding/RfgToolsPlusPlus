@@ -188,7 +188,7 @@ void TerrainLowLod::Read(BinaryReader& cpuFile, const string& name)
 	readHeader_ = true;
 }
 
-std::optional<MeshInstanceData> TerrainLowLod::ReadSubmeshData(BinaryReader& gpuFile, u32 index)
+std::optional<MeshInstanceData> TerrainLowLod::ReadMeshData(BinaryReader& gpuFile, u32 index)
 {
 	if (!readHeader_ || index >= Meshes.size())
 		return {};
@@ -227,7 +227,7 @@ std::optional<MeshInstanceData> TerrainLowLod::ReadSubmeshData(BinaryReader& gpu
 
 	u32 endCRC = gpuFile.ReadUint32();
 	if (startCRC != endCRC)
-		throw std::runtime_error("Error! Mesh start/end CRC mismatch in " + Name + ". Expected " + std::to_string(mesh.VerificationHash) + ", Read " + std::to_string(startCRC));
+		throw std::runtime_error("Error! Mesh start/end CRC mismatch in " + Name + ". Expected " + std::to_string(startCRC) + ", Read " + std::to_string(endCRC));
 
 	//Return data buffers
 	return MeshInstanceData
