@@ -22,8 +22,8 @@ public:
     //Past here isn't the same data layout as the file
     std::vector<PegEntry10> Entries = {};
 
-    //Read cpu file (cpeg/cvbm) data. Does not read out gpu file data to save on memory consumption
-    void Read(BinaryReader& cpuFile, BinaryReader& gpuFile);
+    //Read cpu file (cpeg/cvbm) data
+    void Read(BinaryReader& cpuFile);
     //Write out new cpu file (cpeg/cvbm) and gpu file (gpeg/gvbm). If any textures have been edited their new data will be written. Must call ReadAllTextureData first
     void Write(BinaryWriter& cpuFile, BinaryWriter& gpuFile);
     //Read pixel data for single texture from gpu file. Read() must be called first

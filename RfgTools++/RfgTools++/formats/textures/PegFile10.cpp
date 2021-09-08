@@ -1,6 +1,6 @@
 #include "PegFile10.h"
 
-void PegFile10::Read(BinaryReader& cpuFile, BinaryReader& gpuFile)
+void PegFile10::Read(BinaryReader& cpuFile)
 {
     //Read the header. First 24 bytes of PegFile10 match data layout of peg file
     cpuFile.ReadToMemory(this, 24);
