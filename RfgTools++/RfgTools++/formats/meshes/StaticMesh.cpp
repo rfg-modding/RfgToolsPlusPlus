@@ -29,29 +29,7 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
 
     //Seek to mesh data offset and read mesh data
     cpuFile.SeekBeg(Header.MeshOffset);
-    MeshVersion = cpuFile.ReadUint32();
-    MeshSimpleCrc = cpuFile.ReadUint32();
-    CpuDataSize = cpuFile.ReadUint32();
-    GpuDataSize = cpuFile.ReadUint32();
-    NumSubmeshes = cpuFile.ReadUint32();
-    SubmeshesOffset = cpuFile.ReadUint32();
-    VertexBufferConfig.Read(cpuFile);
-    IndexBufferConfig.Read(cpuFile);
-
-    //Read submesh data. Usually only one submesh in static meshes
-    for (int i = 0; i < NumSubmeshes; i++)
-    {
-        SubmeshData& submesh = SubMeshes.emplace_back();
-        submesh.Read(cpuFile);
-    }
-    for (int i = 0; i < IndexBufferConfig.NumBlocks; i++)
-    {
-        RenderBlock& renderBlock = RenderBlocks.emplace_back();
-        renderBlock.Read(cpuFile);
-    }
-
-    //Todo: Compare with previous crc and report error if they don't match
-    u32 MeshSimpleCrc2 = cpuFile.ReadUint32();
+    MeshInfo.Read(cpuFile);
 
     //Read material data block
     cpuFile.SeekBeg(Header.MaterialMapOffset);
@@ -75,48 +53,27 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
     readHeader_ = true;
 }
 
-std::optional<MeshInstanceData> StaticMesh::ReadSubmeshData(BinaryReader& gpuFile, u32 index)
+std::optional<MeshInstanceData> StaticMesh::ReadMeshData(BinaryReader& gpuFile)
 {
-    if (!readHeader_ || index >= SubMeshes.size())
+    if (!readHeader_)
         return {};
 
-    //Get submesh data
-    SubmeshData& submesh = SubMeshes[index];
-
-    //Calc number of render blocks and indices
-    u32 firstRenderBlockIndex = 0;
-    for (u32 i = 0; i < index; i++)
-    {
-        firstRenderBlockIndex += SubMeshes[i].NumRenderBlocks;
-    }
-    u32 startIndex = RenderBlocks[firstRenderBlockIndex].StartIndex;
-    u32 numIndices = 0;
-    for (u32 i = firstRenderBlockIndex; i < firstRenderBlockIndex + submesh.NumRenderBlocks; i++)
-    {
-        numIndices += RenderBlocks[i].NumIndices;
-    }
-
-    //Calculate positions of index and vertex data
-    u64 indexDataOffset = 16; //Start of index data
-    u64 indexDataEnd = indexDataOffset + (IndexBufferConfig.NumIndices * IndexBufferConfig.IndexSize); //End of index data
-    u64 firstIndexOffset = indexDataOffset + (startIndex * IndexBufferConfig.IndexSize); //Offset of first index for this submesh
-    u64 vertexDataOffset = indexDataEnd + BinaryWriter::CalcAlign(indexDataEnd, 16); //Start of vertex data
-
     //Read index buffer
-    gpuFile.SeekBeg(firstIndexOffset);
-    u32 indexBufferSize = numIndices * IndexBufferConfig.IndexSize;
+    gpuFile.SeekBeg(MeshInfo.IndicesOffset);
+    u32 indexBufferSize = MeshInfo.NumIndices * MeshInfo.IndexSize;
     u8* indexBuffer = new u8[indexBufferSize];
     gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
 
     //Read vertex buffer
-    gpuFile.SeekBeg(vertexDataOffset);
-    u32 vertexBufferSize = VertexBufferConfig.NumVerts * VertexBufferConfig.VertexStride0;
+    gpuFile.SeekBeg(MeshInfo.VertexOffset);
+    u32 vertexBufferSize = MeshInfo.NumVertices * MeshInfo.VertexStride0;
     u8* vertexBuffer = new u8[vertexBufferSize];
     gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
 
     //Return submesh data buffers
     return MeshInstanceData
     {
+        .Info = MeshInfo,
         .VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
         .IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
     };
@@ -130,9 +87,9 @@ void StaticMesh::WriteToObj(const string& gpuFilePath, const string& outputFolde
         return;
 
     //For each submesh write a .obj file and a .mtl file
-    for (u32 i = 0; i < SubMeshes.size(); i++)
+    for (u32 i = 0; i < MeshInfo.Submeshes.size(); i++)
     {
-        SubmeshData& submesh = SubMeshes[i];
+        SubmeshData& submesh = MeshInfo.Submeshes[i];
 
         //Output file paths
         string objFilePath = outputFolderPath + "\\" + Path::GetFileNameNoExtension(Name) + std::to_string(i) + ".obj";
@@ -150,7 +107,7 @@ void StaticMesh::WriteToObj(const string& gpuFilePath, const string& outputFolde
         obj << "usemtl " << mtlName << "\n";
 
         //Try to get vertex and index buffers
-        std::optional<MeshInstanceData> maybeMeshData = ReadSubmeshData(gpuFile, i);
+        std::optional<MeshInstanceData> maybeMeshData = ReadMeshData(gpuFile);
         if (!maybeMeshData)
         {
             printf("Failed to get mesh data for submesh %d of static mesh %s. Stopping export.\n", i, Name.c_str());
@@ -161,7 +118,7 @@ void StaticMesh::WriteToObj(const string& gpuFilePath, const string& outputFolde
         std::span<u8> vertexBufferBytes = meshData.VertexBuffer;
 
         //Write vertex data
-        bool result = MeshHelpers::WriteVerticesToObj(obj, VertexBufferConfig.Format, vertexBufferBytes);
+        bool result = MeshHelpers::WriteVerticesToObj(obj, MeshInfo.VertFormat, vertexBufferBytes);
         if (!result)
         {
             printf("Failed to write vertex data for submesh %d of static mesh %s. Stopping export.\n", i, Name.c_str());

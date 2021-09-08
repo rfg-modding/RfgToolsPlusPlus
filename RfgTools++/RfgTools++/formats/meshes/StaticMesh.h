@@ -6,6 +6,7 @@
 #include "MeshHelpers.h"
 #include "MeshEnums.h"
 #include "MaterialBlock.h"
+#include "MeshDataBlock.h"
 #include "VertexBufferData.h"
 #include "IndexBufferData.h"
 #include <BinaryTools/BinaryReader.h>
@@ -23,7 +24,7 @@ public:
     //Read header data from cpu file
     void Read(BinaryReader& reader, const string& name, u32 signature, u32 version);
     //Read raw data of a submesh. Must call Read to get data from cpu file first
-    std::optional<MeshInstanceData> ReadSubmeshData(BinaryReader& gpuFile, u32 index);
+    std::optional<MeshInstanceData> ReadMeshData(BinaryReader& gpuFile);
     //Write mesh data to a .obj file. Can be opened in 3d modelling software like blender
     void WriteToObj(const string& gpuFilePath, const string& outputFolderPath, const string& diffuseTexturePath = "", const string& specularTexturePath = "", const string& normalTexturePath = "");
 
@@ -39,20 +40,7 @@ public:
     u32 CmIndex;
 
     //Mesh data
-    u32 MeshVersion;
-    u32 MeshSimpleCrc; //Hash used several times in cpu and gpu file to validate mesh
-    u32 CpuDataSize; //Size of data section from MeshOffset to material map data (minus alignment padding at end) in bytes
-    u32 GpuDataSize; //Size of gpu file in bytes
-    u32 NumSubmeshes;
-    u32 SubmeshesOffset; //Seems to be a pointer set at runtime
-    VertexBufferData VertexBufferConfig;
-    IndexBufferData IndexBufferConfig;
-
-    //Submeshes
-    std::vector<SubmeshData> SubMeshes;
-
-    //Render blocks
-    std::vector<RenderBlock> RenderBlocks;
+    MeshDataBlock MeshInfo;
 
     //Material data block
     MaterialBlock MaterialBlock;

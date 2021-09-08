@@ -4,6 +4,7 @@
 #include "SubmeshData.h"
 #include "RenderBlock.h"
 #include <BinaryTools/BinaryReader.h>
+#include <BinaryTools/BinaryWriter.h>
 #include <vector>
 
 //Structure used across multiple RFG mesh formats that describes vertex and index data layout + format
@@ -61,6 +62,12 @@ public:
             RenderBlock& renderBlock = RenderBlocks.emplace_back();
             reader.ReadToMemory(&renderBlock, sizeof(RenderBlock));
         }
+
+        //Patch vertex and index offset since some files don't have correct values.
+        //Note: Relative to the start of mesh data. So in files like gtmesh_pc where there are multiple MeshDataBlock consecutive meshes will be relative to the end of the last mesh
+        IndicesOffset = 16;
+        u32 indicesEnd = IndicesOffset + (NumIndices * IndexSize);
+        VertexOffset = indicesEnd + BinaryWriter::CalcAlign(indicesEnd, 16);
 
         u32 endVerificationHash = reader.ReadUint32();
         if (VerificationHash != endVerificationHash)

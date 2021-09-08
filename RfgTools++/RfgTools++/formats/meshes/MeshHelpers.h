@@ -1,11 +1,13 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "MeshDataBlock.h"
 #include "MeshEnums.h"
 #include <span>
 #include <fstream>
 
 struct MeshInstanceData
 {
+    MeshDataBlock Info;
     std::span<u8> VertexBuffer;
     std::span<u8> IndexBuffer;
 };
