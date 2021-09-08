@@ -28,5 +28,5 @@ namespace MeshHelpers
     }
 
     //Write binary vertex buffer to a .obj file
-    bool WriteVerticesToObj(std::ofstream& obj, VertexFormat format, std::span<u8> vertexBufferBytes);
+    bool WriteVerticesToObj(std::ofstream& obj, MeshDataBlock& info, std::span<u8> vertexBufferBytes);
 }

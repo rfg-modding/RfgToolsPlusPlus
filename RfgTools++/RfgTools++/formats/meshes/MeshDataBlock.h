@@ -69,6 +69,14 @@ public:
         u32 indicesEnd = IndicesOffset + (NumIndices * IndexSize);
         VertexOffset = indicesEnd + BinaryWriter::CalcAlign(indicesEnd, 16);
 
+        //Patch render block offsets for easy access later
+        u32 renderBlockOffset = 0;
+        for (auto& submesh : Submeshes)
+        {
+            submesh.RenderBlocksOffset = renderBlockOffset;
+            renderBlockOffset += submesh.NumRenderBlocks;
+        }
+
         u32 endVerificationHash = reader.ReadUint32();
         if (VerificationHash != endVerificationHash)
             throw std::runtime_error("Error! Mesh verification hashes didn't match when reading a mesh data block");

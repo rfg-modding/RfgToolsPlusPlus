@@ -1,8 +1,8 @@
 #include "MeshHelpers.h"
 
-bool MeshHelpers::WriteVerticesToObj(std::ofstream& obj, VertexFormat format, std::span<u8> vertexBufferBytes)
+bool MeshHelpers::WriteVerticesToObj(std::ofstream& obj, MeshDataBlock& info, std::span<u8> vertexBufferBytes)
 {
-    if (format == VertexFormat::Pixlit1Uv)
+    if (info.VertFormat == VertexFormat::Pixlit1Uv)
     {
         //Convert vertexBufferBytes to span of vertex type to access vertex data
         struct Vertex_Pixlit1Uv
@@ -24,7 +24,7 @@ bool MeshHelpers::WriteVerticesToObj(std::ofstream& obj, VertexFormat format, st
 
         //Note: Not writing normal data since tools like blender generate them automatically anyway
     }
-    else if (format == VertexFormat::Pixlit1UvNmap)
+    else if (info.VertFormat == VertexFormat::Pixlit1UvNmap)
     {
         //Convert vertexBufferBytes to span of vertex type to access vertex data
         struct Vertex_Pixlit1UvNmap
@@ -46,7 +46,7 @@ bool MeshHelpers::WriteVerticesToObj(std::ofstream& obj, VertexFormat format, st
             obj << "vt " << std::to_string(abs((f32)vertex.uvX / 1024.0f)) << " " << std::to_string(abs((f32)vertex.uvY / 1024.0f)) << "\n";
 
     }
-    else if (format == VertexFormat::Pixlit1UvNmapCa)
+    else if (info.VertFormat == VertexFormat::Pixlit1UvNmapCa)
     {
         //Convert vertexBufferBytes to span of vertex type to access vertex data
         struct Vertex_Pixlit1UvNmapCa
@@ -70,7 +70,7 @@ bool MeshHelpers::WriteVerticesToObj(std::ofstream& obj, VertexFormat format, st
             obj << "vt " << std::to_string(abs((f32)vertex.uvX / 1024.0f)) << " " << std::to_string(abs((f32)vertex.uvY / 1024.0f)) << "\n";
 
     }
-    else if (format == VertexFormat::Pixlit2UvNmap)
+    else if (info.VertFormat == VertexFormat::Pixlit2UvNmap)
     {
         //Convert vertexBufferBytes to span of vertex type to access vertex data
         struct Vertex_Pixlit2UvNmap
@@ -95,7 +95,7 @@ bool MeshHelpers::WriteVerticesToObj(std::ofstream& obj, VertexFormat format, st
             obj << "vt " << std::to_string(abs((f32)vertex.uv0X / 1024.0f)) << " " << std::to_string(abs((f32)vertex.uv0Y / 1024.0f)) << "\n";
 
     }
-    else if (format == VertexFormat::Pixlit3UvNmap)
+    else if (info.VertFormat == VertexFormat::Pixlit3UvNmap)
     {
         //Convert vertexBufferBytes to span of vertex type to access vertex data
         struct Vertex_Pixlit3UvNmap
@@ -121,7 +121,7 @@ bool MeshHelpers::WriteVerticesToObj(std::ofstream& obj, VertexFormat format, st
             obj << "vt " << std::to_string(abs((f32)vertex.uv0X / 1024.0f)) << " " << std::to_string(abs((f32)vertex.uv0Y / 1024.0f)) << "\n";
 
     }
-    else if (format == VertexFormat::Pixlit3UvNmapCa)
+    else if (info.VertFormat == VertexFormat::Pixlit3UvNmapCa)
     {
         //Convert vertexBufferBytes to span of vertex type to access vertex data
         struct Vertex_Pixlit3UvNmapCa
@@ -151,7 +151,7 @@ bool MeshHelpers::WriteVerticesToObj(std::ofstream& obj, VertexFormat format, st
     }
     else //Todo: Add remaining vertex formats
     {
-        printf("Unsupported vertex format %s passed to MeshHelpers::WriteVerticesToObj()!", to_string(format).c_str());
+        printf("Unsupported vertex format %s passed to MeshHelpers::WriteVerticesToObj()!", to_string(info.VertFormat).c_str());
         return false;
     }
 

@@ -86,6 +86,17 @@ void StaticMesh::WriteToObj(const string& gpuFilePath, const string& outputFolde
     if (!std::filesystem::exists(outputFolderPath))
         return;
 
+    //Try to get vertex and index buffers
+    std::optional<MeshInstanceData> maybeMeshData = ReadMeshData(gpuFile);
+    if (!maybeMeshData)
+    {
+        printf("Failed to get mesh data static mesh %s. Stopping export.\n", Name.c_str());
+        return;
+    }
+    MeshInstanceData meshData = maybeMeshData.value();
+    std::span<u8> indexBufferBytes = meshData.IndexBuffer;
+    std::span<u8> vertexBufferBytes = meshData.VertexBuffer;
+
     //For each submesh write a .obj file and a .mtl file
     for (u32 i = 0; i < MeshInfo.Submeshes.size(); i++)
     {
@@ -102,58 +113,54 @@ void StaticMesh::WriteToObj(const string& gpuFilePath, const string& outputFolde
         //Lists what textures to use for diffuse, specular, normal, etc
         std::ofstream mtl(mtlFilePath, std::ios_base::out | std::ios_base::trunc);
 
-        //Write material name to obj
-        obj << "mtllib " << mtlName << "\n";
-        obj << "usemtl " << mtlName << "\n";
-
-        //Try to get vertex and index buffers
-        std::optional<MeshInstanceData> maybeMeshData = ReadMeshData(gpuFile);
-        if (!maybeMeshData)
+        //Write an object per render block
+        for (u32 i = 0; i < submesh.NumRenderBlocks; i++)
         {
-            printf("Failed to get mesh data for submesh %d of static mesh %s. Stopping export.\n", i, Name.c_str());
-            return;
+            RenderBlock& block = MeshInfo.RenderBlocks[submesh.RenderBlocksOffset + i];
+            obj << "o RenderBlock" << i << "\n";
+
+            //Write material name to obj
+            obj << "mtllib " << mtlName << "\n";
+            obj << "usemtl " << mtlName << "\n";
+
+            //Write vertex data
+            bool result = MeshHelpers::WriteVerticesToObj(obj, MeshInfo, vertexBufferBytes);
+            if (!result)
+            {
+                printf("Failed to write vertex data for render block %d of static mesh %s. Stopping export.\n", i, Name.c_str());
+                return;
+            }
+
+            //Write faces
+            std::span<u16> indices = std::span<u16>((u16*)indexBufferBytes.data(), indexBufferBytes.size_bytes() / 2);
+            for (u32 j = 1; j < block.NumIndices - 2; j++) //Todo: Why is j starting at 1?
+            {
+                //Get index values. Increment by one since .obj indices start at 1 instead of 0
+                u16 index0 = indices[j + block.StartIndex] + 1;
+                u16 index1 = indices[j + block.StartIndex + 1] + 1;
+                u16 index2 = indices[j + block.StartIndex + 2] + 1;
+
+                //Output face as "f index0/index0 index1/index1 index2/index2". E.g. "f 2/2 27/27 16/16"
+                obj << "f " << index0 << "/" << index0 << " " << index1 << "/" << index1 << " " << index2 << "/" << index2 << "\n";
+            }
+
+            //Write material data if textures provided
+            mtl << "newmtl " << mtlName << "\n";
+            mtl << "Ka 1.000 1.000 1.000" << "\n";
+            mtl << "Kd 1.000 1.000 1.000" << "\n";
+            mtl << "Ks 0.000 0.000 0.000" << "\n";
+            mtl << "\n";
+
+            if (diffuseMapPath != "")
+                mtl << "map_Kd " << diffuseMapPath << "\n";
+            if (specularMapPath != "")
+                mtl << "map_Ns " << specularMapPath << "\n";
+            if (normalMapPath != "")
+                mtl << "map_bump " << normalMapPath << "\n";
         }
-        MeshInstanceData meshData = maybeMeshData.value();
-        std::span<u8> indexBufferBytes = meshData.IndexBuffer;
-        std::span<u8> vertexBufferBytes = meshData.VertexBuffer;
-
-        //Write vertex data
-        bool result = MeshHelpers::WriteVerticesToObj(obj, MeshInfo.VertFormat, vertexBufferBytes);
-        if (!result)
-        {
-            printf("Failed to write vertex data for submesh %d of static mesh %s. Stopping export.\n", i, Name.c_str());
-            return;
-        }
-
-        //Write faces
-        std::span<u16> indices = std::span<u16>((u16*)indexBufferBytes.data(), indexBufferBytes.size_bytes() / 2);
-        for (u32 j = 1; j < indices.size() - 2; j++) //Todo: Why is j starting at 1?
-        {
-            //Get index values. Increment by one since .obj indices start at 1 instead of 0
-            u16 index0 = indices[j] + 1;
-            u16 index1 = indices[j + 1] + 1;
-            u16 index2 = indices[j + 2] + 1;
-
-            //Output face as "f index0/index0 index1/index1 index2/index2". E.g. "f 2/2 27/27 16/16"
-            obj << "f " << index0 << "/" << index0 << " " << index1 << "/" << index1 << " " << index2 << "/" << index2 << "\n";
-        }
-
-        //Release mesh data
-        delete[] meshData.IndexBuffer.data();
-        delete[] meshData.VertexBuffer.data();
-
-        //Write material data if textures provided
-        mtl << "newmtl " << mtlName << "\n";
-        mtl << "Ka 1.000 1.000 1.000" << "\n";
-        mtl << "Kd 1.000 1.000 1.000" << "\n";
-        mtl << "Ks 0.000 0.000 0.000" << "\n";
-        mtl << "\n";
-
-        if (diffuseMapPath != "")
-            mtl << "map_Kd " << diffuseMapPath << "\n";
-        if (specularMapPath != "")
-            mtl << "map_Ns " << specularMapPath << "\n";
-        if (normalMapPath != "")
-            mtl << "map_bump " << normalMapPath << "\n";
     }
+
+    //Release mesh data
+    delete[] meshData.IndexBuffer.data();
+    delete[] meshData.VertexBuffer.data();
 }
