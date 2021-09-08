@@ -110,6 +110,7 @@ struct TerrainStitchInstance
         data.ReadToMemory(&Position, sizeof(Vec3));
         data.ReadToMemory(&Rotation, sizeof(Mat3));
         HavokHandle = data.ReadUint32();
+        data.Skip(32);
     }
 };
 static_assert(sizeof(TerrainStitchInstance) == 72, "sizeof(TerrainStitchInstance) must equal 72 to match game data.");

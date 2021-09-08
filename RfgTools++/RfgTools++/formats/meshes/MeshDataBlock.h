@@ -48,15 +48,13 @@ public:
         reader.ReadToMemory(this, 48);
         reader.Align(16);
 
-        //Reserve spots for the dynamic objects since we know how many we need ahead of time
-        Submeshes.reserve(NumSubmeshes);
-        RenderBlocks.reserve(NumRenderBlocks);
-
         //Read dynamic data
+        NumRenderBlocks = 0; //Recount since NumRenderBlocks is incorrect in some files
         for (u32 i = 0; i < NumSubmeshes; i++)
         {
             SubmeshData& submesh = Submeshes.emplace_back();
             reader.ReadToMemory(&submesh, sizeof(SubmeshData));
+            NumRenderBlocks += submesh.NumRenderBlocks;
         }
         for (u32 i = 0; i < NumRenderBlocks; i++)
         {

@@ -28,7 +28,7 @@ void Terrain::Read(BinaryReader& cpuFile, const string& name)
 	}
 	cpuFile.Align(16);
 
-	//Read high lod terrain mesh header
+	//Read high lod terrain mesh data
 	TerrainMesh.Read(cpuFile);
 	cpuFile.Align(4);
 
@@ -54,7 +54,7 @@ void Terrain::Read(BinaryReader& cpuFile, const string& name)
 	}
 	cpuFile.Skip(4);
 
-	//Read stitch mesh header
+	//Read stitch mesh data
 	if (Subzone.NumRoadDecalMeshes > 0)
 	{
 		//Todo: Come up with a less hacky way of doing this
@@ -87,39 +87,35 @@ void Terrain::Read(BinaryReader& cpuFile, const string& name)
 	}
 	cpuFile.Align(4);
 
-	//Read road mesh header
-	if (Subzone.NumRoadDecalMeshes > 0)
+	//Read road mesh data
+	for (u32 i = 0; i < Subzone.NumRoadDecalMeshes; i++)
 	{
-		for (u32 i = 0; i < Subzone.NumRoadDecalMeshes; i++)
+		auto& roadMeshData = RoadMeshDatas.emplace_back();
+		roadMeshData.Read(cpuFile);
+	}
+	for (u32 i = 0; i < Subzone.NumRoadDecalMeshes; i++)
+	{
+		auto& mesh = RoadMeshes.emplace_back();
+		cpuFile.Align(16);
+		mesh.Read(cpuFile);
+		cpuFile.Align(4);
+
+		//Todo: Find better way of doing this
+		//Skip null data of varying size
+		while (cpuFile.PeekUint32() == 0)
 		{
-			auto& roadMeshData = RoadMeshDatas.emplace_back();
-			roadMeshData.Read(cpuFile);
+			cpuFile.Skip(4);
 		}
 
-		for (u32 i = 0; i < Subzone.NumRoadDecalMeshes; i++)
-		{
-			cpuFile.Align(16);
-			auto& mesh = RoadMeshes.emplace_back();
-			mesh.Read(cpuFile);
-			cpuFile.Align(4);
+		u32 textureNamesSize = cpuFile.ReadUint32();
+		RoadTextures.push_back(cpuFile.ReadSizedStringList(textureNamesSize));
 
-			//Todo: Find better way of doing this
-			//Skip null data of varying size
-			while (cpuFile.PeekUint32() == 0)
-			{
-				cpuFile.Skip(4);
-			}
+		cpuFile.Align(16);
+		cpuFile.Skip(16);
+		cpuFile.Align(16);
 
-			u32 textureNamesSize = cpuFile.ReadUint32();
-			RoadTextures.push_back(cpuFile.ReadSizedStringList(textureNamesSize));
-
-			cpuFile.Align(16);
-			cpuFile.Skip(16);
-			cpuFile.Align(16);
-
-			auto& roadMaterial = RoadMaterials.emplace_back();
-			roadMaterial.Read(cpuFile);
-		}
+		auto& roadMaterial = RoadMaterials.emplace_back();
+		roadMaterial.Read(cpuFile);
 	}
 
 	readHeader_ = true;
