@@ -2,7 +2,7 @@
 Code for interacting the file formats of the PC versions of Red Faction Guerrilla. This is actively used by [Nanoforge](https://github.com/Moneyl/Nanoforge/). Special thanks to [Gibbed](https://github.com/gibbed/) who originally reverse engineered the packfile, texture, vint_doc, and asm_pc formats.
 
 ## Formats
-The table below lists each format used by RFG and how much this library supports them. Extensions prepended with an asterisk `*` are split into two files known as the cpu file and gpu file. For example, for static meshes `.csmesh_pc` is the cpu file extension and `.gsmesh_pc` is the gpu file extension.
+The table below lists each format used by RFG and how much this library supports them. Extensions prepended with an asterisk `*` are stored by the game as two files known as the cpu file and gpu file. For example, for static meshes `.csmesh_pc` is the cpu file extension and `.gsmesh_pc` is the gpu file extension.
 
 | Format                     | Extension(s)         | Read | Write |
 |----------------------------|----------------------|------|-------|
@@ -19,8 +19,8 @@ The table below lists each format used by RFG and how much this library supports
 | Visual effect              | *cefct_pc            | ❌    | ❌     |
 | Foliage mesh               | cfmesh_pc            | ❌    | ❌     |
 | Terrain clutter mesh       | *cstch               | ❌    | ❌     |
-| Terrain zone               | *cterrain_pc         | ❌    | ❌     |
-| Terrain subzone            | *ctmesh_pc           | ❌    | ❌     |
+| Terrain zone               | *cterrain_pc         | ✔️    | ❌     |
+| Terrain subzone            | *ctmesh_pc           | ✔️    | ❌     |
 | Fullscreen map data        | fsmib                | ❌    | ❌     |
 | Shader                     | fxo_kg               | ❌    | ❌     |
 | Steam localization strings | le_strings           | ❌    | ❌     |
