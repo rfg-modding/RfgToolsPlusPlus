@@ -41,7 +41,7 @@ public:
     std::vector<SubmeshData> Submeshes = {};
     std::vector<RenderBlock> RenderBlocks = {};
 
-    void Read(BinaryReader& reader)
+    void Read(BinaryReader& reader, bool patchBufferOffsets = false)
     {
         u64 startPos = reader.Position();
 
@@ -63,11 +63,14 @@ public:
             reader.ReadToMemory(&renderBlock, sizeof(RenderBlock));
         }
 
+        //Todo: Fix this for files like gterrain_pc and gtmesh_pc that have multiple meshes. Seems to need absolute offset to calculate correct align pad. Luckily they have correct offsets by default
         //Patch vertex and index offset since some files don't have correct values.
-        //Note: Relative to the start of mesh data. So in files like gtmesh_pc where there are multiple MeshDataBlock consecutive meshes will be relative to the end of the last mesh
-        IndicesOffset = 16;
-        u32 indicesEnd = IndicesOffset + (NumIndices * IndexSize);
-        VertexOffset = indicesEnd + BinaryWriter::CalcAlign(indicesEnd, 16);
+        if (patchBufferOffsets)
+        {
+            IndicesOffset = 16;
+            u32 indicesEnd = IndicesOffset + (NumIndices * IndexSize);
+            VertexOffset = indicesEnd + BinaryWriter::CalcAlign(indicesEnd, 16);
+        }
 
         //Patch render block offsets for easy access later
         u32 renderBlockOffset = 0;

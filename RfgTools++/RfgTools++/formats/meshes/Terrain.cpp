@@ -123,7 +123,7 @@ void Terrain::Read(BinaryReader& cpuFile, const string& name)
 
 std::optional<MeshInstanceData> Terrain::ReadTerrainMeshData(BinaryReader& gpuFile)
 {
-	if (!readHeader_)// || index >= Meshes.size())
+	if (!readHeader_)
 		return {};
 
 	gpuFile.SeekBeg(0);
@@ -150,6 +150,7 @@ std::optional<MeshInstanceData> Terrain::ReadTerrainMeshData(BinaryReader& gpuFi
 	//Return data buffers
 	return MeshInstanceData
 	{
+		.Info = TerrainMesh,
 		.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
 		.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
 	};

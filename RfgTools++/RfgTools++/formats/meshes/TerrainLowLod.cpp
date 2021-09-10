@@ -232,6 +232,7 @@ std::optional<MeshInstanceData> TerrainLowLod::ReadMeshData(BinaryReader& gpuFil
 	//Return data buffers
 	return MeshInstanceData
 	{
+		.Info = Meshes[index],
 		.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
 		.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
 	};

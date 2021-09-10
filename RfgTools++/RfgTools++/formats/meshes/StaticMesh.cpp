@@ -29,7 +29,7 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
 
     //Seek to mesh data offset and read mesh data
     cpuFile.SeekBeg(Header.MeshOffset);
-    MeshInfo.Read(cpuFile);
+    MeshInfo.Read(cpuFile, true);
 
     //Read material data block
     cpuFile.SeekBeg(Header.MaterialMapOffset);
