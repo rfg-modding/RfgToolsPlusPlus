@@ -2,7 +2,6 @@
 #include "common/filesystem/Path.h"
 #include "common/filesystem/File.h"
 #include "common/string/String.h"
-#include "common/concurrency/Parallel.h"
 #include "compression/Compression.h"
 #include "hashes/Hash.h"
 #include <tinyxml2.h>
