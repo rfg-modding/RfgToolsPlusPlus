@@ -17,4 +17,7 @@ namespace String
     bool EqualIgnoreCase(s_view str0, s_view str1);
     //Get nth character from the back of str. E.g. FindNthCharacterFromBack("a/a/a/", '/', 2) would return 3
     size_t FindNthCharacterFromBack(s_view str, char character, u32 n);
+
+    //Convert std::string to std::wstring
+    std::wstring ToWideString(const std::string& in);
 }

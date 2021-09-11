@@ -1,5 +1,6 @@
 #include "String.h"
 #include <algorithm>
+#include <codecvt>
 #include <regex>
 
 namespace String
@@ -90,5 +91,12 @@ namespace String
             }
         }
         return targetPos;
+    }
+
+    //Source: https://stackoverflow.com/a/49741944
+    std::wstring ToWideString(const std::string& in)
+    {
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        return converter.from_bytes(in);
     }
 }
