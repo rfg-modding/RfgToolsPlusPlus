@@ -1,5 +1,6 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "Vec2.h"
 #include <sstream>
 
 //Todo: Put this in a utility namespace
@@ -80,4 +81,8 @@ struct Vec3
                     + to_string_precise(z, 2) +
                 "}";
     }
+
+    //Swizzle functions
+    Vec2 XY() { return Vec2{ x, y }; }
+    Vec2 XZ() { return Vec2{ x, z }; }
 };
