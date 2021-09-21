@@ -25,6 +25,8 @@ public:
 	void Read(BinaryReader& cpuFile, const string& name);
 	//Read vertex and index buffers of a mesh. Must call Read to get data from cpu file first
 	std::optional<MeshInstanceData> ReadTerrainMeshData(BinaryReader& gpuFile);
+	std::optional<MeshInstanceData> ReadStitchMeshData(BinaryReader& gpuFile);
+	std::optional<std::vector<MeshInstanceData>> ReadRoadMeshData(BinaryReader& gpuFile);
 
 	u32 Signature;
 	u32 Version;
@@ -51,6 +53,7 @@ public:
 
 	//Members below this aren't part of the file
 	string Name;
+	bool HasStitchMesh = false;
 
 private:
 	bool readHeader_ = false;

@@ -57,6 +57,8 @@ void Terrain::Read(BinaryReader& cpuFile, const string& name)
 	//Read stitch mesh data
 	if (Subzone.NumRoadDecalMeshes > 0)
 	{
+		HasStitchMesh = true;
+
 		//Todo: Come up with a less hacky way of doing this
 		//Skip unknown data at before road mesh header that has indices which can be parsed
 		u32 i = cpuFile.ReadUint32();
@@ -129,7 +131,7 @@ std::optional<MeshInstanceData> Terrain::ReadTerrainMeshData(BinaryReader& gpuFi
 	gpuFile.SeekBeg(0);
 	u32 startCRC = gpuFile.ReadUint32();
 	if (startCRC != TerrainMesh.VerificationHash)
-		throw std::runtime_error("Error! Mesh header CRC mismatch in " + Name + ". Expected " + std::to_string(TerrainMesh.VerificationHash) + ", Read " + std::to_string(startCRC));
+		throw std::runtime_error("Error! Terrain mesh header CRC mismatch in " + Name + ". Expected " + std::to_string(TerrainMesh.VerificationHash) + ", Read " + std::to_string(startCRC));
 
 	//Read index buffer
 	gpuFile.SeekBeg(TerrainMesh.IndicesOffset);
@@ -145,7 +147,7 @@ std::optional<MeshInstanceData> Terrain::ReadTerrainMeshData(BinaryReader& gpuFi
 
 	u32 endCRC = gpuFile.ReadUint32();
 	if (startCRC != endCRC)
-		throw std::runtime_error("Error! Mesh start/end CRC mismatch in " + Name + ". Expected " + std::to_string(startCRC) + ", Read " + std::to_string(endCRC));
+		throw std::runtime_error("Error! Terrain mesh start/end CRC mismatch in " + Name + ". Expected " + std::to_string(startCRC) + ", Read " + std::to_string(endCRC));
 
 	//Return data buffers
 	return MeshInstanceData
@@ -154,4 +156,102 @@ std::optional<MeshInstanceData> Terrain::ReadTerrainMeshData(BinaryReader& gpuFi
 		.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
 		.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
 	};
+}
+
+std::optional<MeshInstanceData> Terrain::ReadStitchMeshData(BinaryReader& gpuFile)
+{
+	if (!HasStitchMesh)
+		return {};
+
+	//Skip terrain mesh data
+	gpuFile.SeekBeg(TerrainMesh.VertexOffset); //Seek to vertex buffer which is always after index buffer
+	gpuFile.Skip(TerrainMesh.NumVertices * TerrainMesh.VertexStride0);
+	gpuFile.Skip(4); //Skip verification CRC
+
+	//Start of stitch mesh data
+	gpuFile.Align(16);
+	u64 startPos = gpuFile.Position();
+	u32 startCRC = gpuFile.ReadUint32();
+	if (startCRC != StitchMesh.VerificationHash)
+		throw std::runtime_error("Error! Stitch mesh header CRC mismatch in " + Name + ". Expected " + std::to_string(StitchMesh.VerificationHash) + ", Read " + std::to_string(startCRC));
+
+	//Read index buffer
+	gpuFile.SeekBeg(startPos + StitchMesh.IndicesOffset);
+	u32 indexBufferSize = StitchMesh.NumIndices * StitchMesh.IndexSize;
+	u8* indexBuffer = new u8[indexBufferSize];
+	gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+
+	//Read vertex buffer
+	gpuFile.SeekBeg(startPos + StitchMesh.VertexOffset);
+	u32 vertexBufferSize = StitchMesh.NumVertices * StitchMesh.VertexStride0;
+	u8* vertexBuffer = new u8[vertexBufferSize];
+	gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+
+	u32 endCRC = gpuFile.ReadUint32();
+	if (startCRC != endCRC)
+		throw std::runtime_error("Error! Stitch mesh start/end CRC mismatch in " + Name + ". Expected " + std::to_string(startCRC) + ", Read " + std::to_string(endCRC));
+
+	//Return data buffers
+	return MeshInstanceData
+	{
+		.Info = StitchMesh,
+		.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
+		.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+	};
+}
+
+std::optional<std::vector<MeshInstanceData>> Terrain::ReadRoadMeshData(BinaryReader& gpuFile)
+{
+	if (RoadMeshes.size() == 0)
+		return {};
+
+	//Skip terrain mesh data
+	gpuFile.SeekBeg(TerrainMesh.VertexOffset); //Seek to vertex buffer which is always after index buffer
+	gpuFile.Skip(TerrainMesh.NumVertices * TerrainMesh.VertexStride0);
+	gpuFile.Skip(4); //Skip verification CRC
+
+	//Skip stitch mesh data
+	gpuFile.Align(16);
+	u64 stitchStartPos = gpuFile.Position();
+	gpuFile.SeekBeg(stitchStartPos + StitchMesh.VertexOffset);
+	gpuFile.Skip(StitchMesh.NumVertices * StitchMesh.VertexStride0);
+	gpuFile.Skip(4); //Skip verification CRC
+
+	//Start of road mesh data
+	std::vector<MeshInstanceData> out = {};
+	for (u32 i = 0; i < RoadMeshes.size(); i++)
+	{
+		gpuFile.Align(16);
+		MeshDataBlock& mesh = RoadMeshes[i];
+		u64 startPos = gpuFile.Position();
+		u32 startCRC = gpuFile.ReadUint32();
+		gpuFile.Align(16);
+		if (startCRC != mesh.VerificationHash)
+			throw std::runtime_error("Error! Road mesh header CRC mismatch in " + Name + ", Road mesh " + std::to_string(i) + ". Expected " + std::to_string(mesh.VerificationHash) + ", Read " + std::to_string(startCRC));
+
+		//Read index buffer
+		gpuFile.SeekBeg(startPos + mesh.IndicesOffset);
+		u32 indexBufferSize = mesh.NumIndices * mesh.IndexSize;
+		u8* indexBuffer = new u8[indexBufferSize];
+		gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+
+		//Read vertex buffer
+		gpuFile.SeekBeg(startPos + mesh.VertexOffset);
+		u32 vertexBufferSize = mesh.NumVertices * mesh.VertexStride0;
+		u8* vertexBuffer = new u8[vertexBufferSize];
+		gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+
+		u32 endCRC = gpuFile.ReadUint32();
+		if (startCRC != endCRC)
+			throw std::runtime_error("Error! Road mesh start/end CRC mismatch in " + Name + ", Road mesh " + std::to_string(i) + ". Expected " + std::to_string(startCRC) + ", Read " + std::to_string(endCRC));
+
+		out.push_back(MeshInstanceData
+		{
+			.Info = mesh,
+			.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
+			.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+		});
+	}
+
+	return out;
 }
