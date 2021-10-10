@@ -1,4 +1,5 @@
 #include "PegFile10.h"
+#include "common/string/String.h"
 
 void PegFile10::Read(BinaryReader& cpuFile)
 {
@@ -116,7 +117,7 @@ std::optional<u32> PegFile10::GetEntryIndex(const string& name)
     for (u32 i = 0; i < Entries.size(); i++)
     {
         PegEntry10& entry = Entries[i];
-        if (entry.Name == name)
+        if (String::EqualIgnoreCase(entry.Name, name))
             return i;
     }
     return {};
@@ -131,10 +132,23 @@ std::optional<std::span<u8>> PegFile10::GetTextureData(const string& name)
     return GetTextureData(index.value());
 }
 
-std::optional<std::span<u8>> PegFile10::GetTextureData(u32 index)
+std::optional<std::span<u8>> PegFile10::GetTextureData(u32 index, bool returnCopy)
 {
     if (index >= Entries.size())
         return {};
 
-    return Entries[index].RawData;
+    auto& entry = Entries[index];
+    std::optional<std::span<u8>> result = {};
+    if (returnCopy)
+    {
+        u8* buffer = new u8[entry.RawData.size_bytes()];
+        memcpy(buffer, entry.RawData.data(), entry.RawData.size_bytes());
+        result = std::span<u8>{ buffer, entry.RawData.size_bytes() };
+    }
+    else
+    {
+        result = entry.RawData;
+    }
+
+    return result;
 }

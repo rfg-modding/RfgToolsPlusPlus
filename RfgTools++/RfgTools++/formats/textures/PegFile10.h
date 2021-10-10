@@ -39,7 +39,7 @@ public:
     //Get entry pixel data
     std::optional<std::span<u8>> GetTextureData(const string& name);
     //Get entry pixel data
-    std::optional<std::span<u8>> GetTextureData(u32 index);
+    std::optional<std::span<u8>> GetTextureData(u32 index, bool returnCopy = false);
 
 private:
     bool headerRead_ = false;
