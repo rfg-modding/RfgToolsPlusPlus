@@ -33,7 +33,7 @@ public:
     //Extra data that's not in the file
     string Name;
     std::span<u8> RawData;
-    bool Edited = false; 
+    bool Edited = false;
 
     void Read(BinaryReader& reader)
     {

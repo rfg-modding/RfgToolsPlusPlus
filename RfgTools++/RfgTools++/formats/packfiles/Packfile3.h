@@ -9,6 +9,9 @@
 #include <optional>
 #include <filesystem>
 
+class BinaryReader;
+
+//Data source to read packfile from
 enum class DataSource
 {
     File,
@@ -16,11 +19,11 @@ enum class DataSource
     None
 };
 
+//Packfile v3 flags
 #define PACKFILE_FLAG_COMPRESSED 1
 #define PACKFILE_FLAG_CONDENSED 2
 #define INVALID_HANDLE 0xFFFFFFFF
 
-class BinaryReader;
 //Essentially a labelled span. Used for files stored in memory.
 struct MemoryFile
 {
@@ -32,11 +35,11 @@ struct MemoryFile
 class Packfile3
 {
 public:
-    //Used when the packfile source is a file
+    //Load a packfile from a file
     Packfile3(const string& path);
-    //Used when the packfile source is a memory buffer
+    //Load a packfile from a memory buffer
     Packfile3(std::span<u8> buffer);
-    //Delete the default constructor since we want to ensure the path or buffer are set properly
+    //Delete the default constructor to ensure Packfile3 instances are always valid
     Packfile3() = delete;
     ~Packfile3();
     Packfile3(const Packfile3& other); //Copy constructor
@@ -44,7 +47,7 @@ public:
     Packfile3& operator=(const Packfile3& other); //Copy assignment operator
     Packfile3& operator=(Packfile3&& other) noexcept; //Move assignment operator
 
-    //Functions which need access to the file
+    //Functions which need access to the data source
     //Reads header, entries, and filenames from packfile
     void ReadMetadata(BinaryReader* reader = nullptr);
     //Extracts subfiles to outputPath
@@ -62,14 +65,14 @@ public:
     //Read data from any asm_pc files the vpp_pc contains. Used to read contents of str2_pc files inside vpp_pc files
     void ReadAsmFiles();
 
-
-    //Functions which work off a cached data from the functions above
+    //Get information about the packfile
     bool CanExtractSingleFile() const;
     bool Contains(s_view subfileName);
     void SetName(const string& name) { name_ = name; }
     string Name() const { return name_; }
     const char* NameCstr() const { return name_.data(); }
 
+    //Pack all the files in the folder at inputPath into a packfile at outputPath
     static void Pack(const string& inputPath, const string& outputPath, bool compressed, bool condensed);
 
     Packfile3Header Header;
@@ -88,6 +91,7 @@ private:
     void ExtractCompressed(const string& outputPath, BinaryReader& reader);
     void ExtractDefault(const string& outputPath, BinaryReader& reader);
 
+    //Read streams.xml
     static void ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths);
 
     std::span<u8> buffer_ = {};
@@ -99,7 +103,3 @@ private:
 
     DataSource packfileSourceType = DataSource::None;
 };
-
-//Todo: Move these into a util file
-MemoryFile GetStreamsFileMemory(Packfile3* packfile);
-void WriteStreamsFile(Packfile3* packfile, const string& outputPath);
