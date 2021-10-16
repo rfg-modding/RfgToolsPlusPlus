@@ -88,7 +88,7 @@ void PegFile10::ReadAllTextureData(BinaryReader& gpuFile, bool overwriteEdits)
     }
 }
 
-void PegFile10::SetTextureData(const string& name, std::span<u8> data)
+void PegFile10::SetTextureData(std::string_view name, std::span<u8> data)
 {
     if (!headerRead_)
         return;
@@ -112,7 +112,7 @@ void PegFile10::Cleanup()
     }
 }
 
-std::optional<u32> PegFile10::GetEntryIndex(const string& name)
+std::optional<u32> PegFile10::GetEntryIndex(std::string_view name)
 {
     for (u32 i = 0; i < Entries.size(); i++)
     {
@@ -123,7 +123,7 @@ std::optional<u32> PegFile10::GetEntryIndex(const string& name)
     return {};
 }
 
-std::optional<std::span<u8>> PegFile10::GetTextureData(const string& name)
+std::optional<std::span<u8>> PegFile10::GetTextureData(std::string_view name)
 {
     auto index = GetEntryIndex(name);
     if (!index)

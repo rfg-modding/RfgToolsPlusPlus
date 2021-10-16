@@ -29,7 +29,7 @@
 
 namespace Hash
 {
-    u32 HashVolitionCRC(const string& input, u32 hash);
-    u32 HashVolitionCRCAlt(const string& input, u32 hash);
-    u32 HashVolition(const string& input);
+    u32 HashVolitionCRC(std::string_view input, u32 hash);
+    u32 HashVolitionCRCAlt(std::string_view input, u32 hash);
+    u32 HashVolition(std::string_view input);
 }

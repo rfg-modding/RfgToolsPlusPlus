@@ -21,8 +21,8 @@ struct LocalizationEntry3
 class LocalizationFile3
 {
 public:
-    void Read(BinaryReader& reader, const string& name);
-    
+    void Read(BinaryReader& reader, std::string_view name);
+
     //Header
     u32 Signature;
     u32 Version;

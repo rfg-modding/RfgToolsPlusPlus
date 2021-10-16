@@ -40,7 +40,7 @@ u32 _CrcVolitionTable[256] =
 
 namespace Hash
 {
-    u32 HashVolitionCRC(const string& input, u32 hash)
+    u32 HashVolitionCRC(std::string_view input, u32 hash)
     {
         string inputLowercase = String::ToLower(input);
         for (int i = 0; i < inputLowercase.size(); i++)
@@ -56,7 +56,7 @@ namespace Hash
         However HashVolitionCRC() doesn't properly recreate the key hashes in rfglocatext files while HashVolitionCRCAlt() does.
         So either they're different hashing methods or HashVolitionCRC() has a bug in this implementation
     */
-    u32 HashVolitionCRCAlt(const string& input, u32 hash)
+    u32 HashVolitionCRCAlt(std::string_view input, u32 hash)
     {
         char* str = (char*)input.data();
         char c = *str;
@@ -75,7 +75,7 @@ namespace Hash
         return ~temp;
     }
 
-    u32 HashVolition(const string& input)
+    u32 HashVolition(std::string_view input)
     {
         string inputLowercase = String::ToLower(input);
 

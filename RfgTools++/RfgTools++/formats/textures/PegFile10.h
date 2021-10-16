@@ -31,13 +31,13 @@ public:
     //Read pixel data for all textures from gpu file. Read() must be called first. By default only reads pixel data for unedited textures
     void ReadAllTextureData(BinaryReader& gpuFile, bool overwriteEdits = false);
     //Set texture pixel data
-    void SetTextureData(const string& name, std::span<u8> data);
+    void SetTextureData(std::string_view name, std::span<u8> data);
     //Free any allocated memory
     void Cleanup();
     //Get entry index in ::Entries
-    std::optional<u32> GetEntryIndex(const string& name);
+    std::optional<u32> GetEntryIndex(std::string_view name);
     //Get entry pixel data
-    std::optional<std::span<u8>> GetTextureData(const string& name);
+    std::optional<std::span<u8>> GetTextureData(std::string_view name);
     //Get entry pixel data
     std::optional<std::span<u8>> GetTextureData(u32 index, bool returnCopy = false);
 

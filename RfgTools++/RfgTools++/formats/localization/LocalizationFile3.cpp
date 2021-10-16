@@ -1,6 +1,6 @@
 #include "LocalizationFile3.h"
 
-void LocalizationFile3::Read(BinaryReader& reader, const string& name)
+void LocalizationFile3::Read(BinaryReader& reader, std::string_view name)
 {
     Name = name;
 
