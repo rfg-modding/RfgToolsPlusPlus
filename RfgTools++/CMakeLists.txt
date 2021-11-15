@@ -4,9 +4,11 @@ project (RfgTools++ VERSION 1.0.0
                   DESCRIPTION "RfgTools++"
                   LANGUAGES CXX)
 
+set(TINYGLTF_HEADER_ONLY ON)
+
 # Get list of source files in project src folders recursively
 # Places in SOURCES variable
-file(GLOB_RECURSE SOURCES 
+file(GLOB_RECURSE SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/RfgTools++/*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/RfgTools++/*.cpp
     # TODO: Hook this up as a static lib once it's got a CMakeLists.txt. For now this works
@@ -50,6 +52,7 @@ target_include_directories(RfgTools++ SYSTEM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/
     ${CMAKE_SOURCE_DIR}/Dependencies/tinyxml2
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/tinygltf/
 )
 
 #target_link_libraries(RfgTools++ PRIVATE zlibstatic)

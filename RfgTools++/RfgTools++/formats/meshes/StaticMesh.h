@@ -25,8 +25,8 @@ public:
     void Read(BinaryReader& reader, const string& name, u32 signature, u32 version);
     //Read raw data of a submesh. Must call Read to get data from cpu file first
     std::optional<MeshInstanceData> ReadMeshData(BinaryReader& gpuFile);
-    //Write mesh data to a .obj file. Can be opened in 3d modelling software like blender
-    void WriteToObj(const string& gpuFilePath, const string& outputFolderPath, const string& diffuseTexturePath = "", const string& specularTexturePath = "", const string& normalTexturePath = "");
+    //Write mesh as a gltf file
+    void WriteToGltf(BinaryReader& gpuFile, const string& outPath, const string& diffuseTextureName = "", const string& specularTextureName = "", const string& normalTextureName = "");
 
     string Name;
     //Shared mesh header used by all mesh types

@@ -79,88 +79,27 @@ std::optional<MeshInstanceData> StaticMesh::ReadMeshData(BinaryReader& gpuFile)
     };
 }
 
-//Todo: See if more of this function can be moved into MeshHelpers:: to reuse on other mesh formats
-void StaticMesh::WriteToObj(const string& gpuFilePath, const string& outputFolderPath, const string& diffuseMapPath, const string& specularMapPath, const string& normalMapPath)
+void StaticMesh::WriteToGltf(BinaryReader& gpuFile, const string& outPath, const string& diffusePath, const string& specularPath, const string& normalPath)
 {
-    BinaryReader gpuFile(gpuFilePath);
-    if (!std::filesystem::exists(outputFolderPath))
+    if (!std::filesystem::exists(Path::GetParentDirectory(outPath)))
+    {
+        printf("Error in StaticMesh::WriteToGltf() for mesh %s. Output path doesn't exist.\n", Name.c_str());
         return;
+    }
 
-    //Try to get vertex and index buffers
+    //Extract mesh data
     std::optional<MeshInstanceData> maybeMeshData = ReadMeshData(gpuFile);
     if (!maybeMeshData)
     {
-        printf("Failed to get mesh data static mesh %s. Stopping export.\n", Name.c_str());
+        printf("Error in StaticMesh::WriteToGltf() for mesh %s. Failed to read mesh data.\n", Name.c_str());
         return;
     }
-    MeshInstanceData meshData = maybeMeshData.value();
-    std::span<u8> indexBufferBytes = meshData.IndexBuffer;
-    std::span<u8> vertexBufferBytes = meshData.VertexBuffer;
+    MeshInstanceData data = maybeMeshData.value();
+    std::span<u8> indices = data.IndexBuffer;
+    std::span<u8> vertices = data.VertexBuffer;
+    defer(delete[] indices.data());
+    defer(delete[] vertices.data());
 
-    //For each submesh write a .obj file and a .mtl file
-    for (u32 i = 0; i < MeshInfo.Submeshes.size(); i++)
-    {
-        SubmeshData& submesh = MeshInfo.Submeshes[i];
-
-        //Output file paths
-        string objFilePath = outputFolderPath + "\\" + Path::GetFileNameNoExtension(Name) + std::to_string(i) + ".obj";
-        string mtlName = Path::GetFileNameNoExtension(Name) + std::to_string(i) + "_mat"; //Material name used inside .mtl and .obj files
-        string mtlFileName = Path::GetFileNameNoExtension(Name) + std::to_string(i) + ".mtl"; //.mtl filename
-        string mtlFilePath = outputFolderPath + "\\" + mtlFileName;
-
-        //Contains indices, vertices, UVs, etc
-        std::ofstream obj(objFilePath, std::ios_base::out | std::ios_base::trunc);
-        //Lists what textures to use for diffuse, specular, normal, etc
-        std::ofstream mtl(mtlFilePath, std::ios_base::out | std::ios_base::trunc);
-
-        //Write an object per render block
-        for (u32 i = 0; i < submesh.NumRenderBlocks; i++)
-        {
-            RenderBlock& block = MeshInfo.RenderBlocks[submesh.RenderBlocksOffset + i];
-            obj << "o RenderBlock" << i << "\n";
-
-            //Write material name to obj
-            obj << "mtllib " << mtlName << "\n";
-            obj << "usemtl " << mtlName << "\n";
-
-            //Write vertex data
-            bool result = MeshHelpers::WriteVerticesToObj(obj, MeshInfo, vertexBufferBytes);
-            if (!result)
-            {
-                printf("Failed to write vertex data for render block %d of static mesh %s. Stopping export.\n", i, Name.c_str());
-                return;
-            }
-
-            //Write faces
-            std::span<u16> indices = std::span<u16>((u16*)indexBufferBytes.data(), indexBufferBytes.size_bytes() / 2);
-            for (u32 j = 1; j < block.NumIndices - 2; j++) //Todo: Why is j starting at 1?
-            {
-                //Get index values. Increment by one since .obj indices start at 1 instead of 0
-                u16 index0 = indices[j + block.StartIndex] + 1;
-                u16 index1 = indices[j + block.StartIndex + 1] + 1;
-                u16 index2 = indices[j + block.StartIndex + 2] + 1;
-
-                //Output face as "f index0/index0 index1/index1 index2/index2". E.g. "f 2/2 27/27 16/16"
-                obj << "f " << index0 << "/" << index0 << " " << index1 << "/" << index1 << " " << index2 << "/" << index2 << "\n";
-            }
-
-            //Write material data if textures provided
-            mtl << "newmtl " << mtlName << "\n";
-            mtl << "Ka 1.000 1.000 1.000" << "\n";
-            mtl << "Kd 1.000 1.000 1.000" << "\n";
-            mtl << "Ks 0.000 0.000 0.000" << "\n";
-            mtl << "\n";
-
-            if (diffuseMapPath != "")
-                mtl << "map_Kd " << diffuseMapPath << "\n";
-            if (specularMapPath != "")
-                mtl << "map_Ns " << specularMapPath << "\n";
-            if (normalMapPath != "")
-                mtl << "map_bump " << normalMapPath << "\n";
-        }
-    }
-
-    //Release mesh data
-    delete[] meshData.IndexBuffer.data();
-    delete[] meshData.VertexBuffer.data();
+    //Write mesh to gltf file
+    MeshHelpers::WriteToGltf(MeshInfo, NumLods, indices, vertices, outPath, diffusePath, specularPath, normalPath);
 }

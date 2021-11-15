@@ -39,6 +39,22 @@ struct Vec3
         return *this;
     }
 
+    Vec3 operator*=(const f32 scalar)
+    {
+        x *= scalar;
+        y *= scalar;
+        z *= scalar;
+        return *this;
+    }
+
+    Vec3 operator-=(const f32 scalar)
+    {
+        x -= scalar;
+        y -= scalar;
+        z -= scalar;
+        return *this;
+    }
+
     Vec3 operator/(f32 scalar) const
     {
         return Vec3{ x / scalar, y / scalar, z / scalar };
