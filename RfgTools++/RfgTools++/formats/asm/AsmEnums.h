@@ -110,6 +110,7 @@ enum class PrimitiveType : u8
     NumPrimitiveTypes = 23,
 };
 
+#pragma warning(disable:4505)
 static string to_string(AllocatorType value)
 {
     switch (value)
@@ -328,3 +329,4 @@ static string to_string(PrimitiveType value)
         throw std::runtime_error("Invalid PrimitiveType enum value passed to to_string()!");
     }
 }
+#pragma warning(default:4505)

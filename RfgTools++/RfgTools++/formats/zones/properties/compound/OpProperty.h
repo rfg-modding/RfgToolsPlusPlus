@@ -12,6 +12,7 @@ public:
     Vec3 Position;
     Mat3 Orient;
 
+#pragma warning(disable:4100)
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
         Type = type;
@@ -38,4 +39,5 @@ public:
 
         return true;
     }
+#pragma warning(default:4100)
 };

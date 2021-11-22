@@ -11,6 +11,7 @@ public:
     Vec3 Min;
     Vec3 Max;
 
+#pragma warning(disable:4100)
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
         Type = type;
@@ -27,4 +28,5 @@ public:
         Max.z = reader.ReadFloat();
         return true;
     }
+#pragma warning(default:4100)
 };

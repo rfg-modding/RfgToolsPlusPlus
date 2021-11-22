@@ -6,12 +6,12 @@
 
 struct TerrainRenderableData
 {
-    u32 MeshDataOffset;
-    u32 RenderableOffset;
+    u32 MeshDataOffset = 0;
+    u32 RenderableOffset = 0;
     Vec3 AabbMin;
     Vec3 AabbMax;
     Vec3 BspherePosition;
-    f32 BsphereRadius;
+    f32 BsphereRadius = 0.0f;
 
     void Read(BinaryReader& data)
     {
@@ -27,20 +27,20 @@ static_assert(sizeof(TerrainRenderableData) == 48, "sizeof(TerrainRenderableData
 
 struct TerrainSubzoneData
 {
-	u32 SubzoneIndex;
+    u32 SubzoneIndex = 0;
     Vec3 Position;
-    u32 PatchCount;
-    u32 PatchesOffset;
+    u32 PatchCount = 0;
+    u32 PatchesOffset = 0;
     TerrainRenderableData RenderableData;
-    u32 NumDecals;
-    u32 DecalsOffset;
-    u32 StitchMeshDataOffset;
-    u32 StitchRenderableOffset;
-    u32 NumStitchPieces;
-    u32 StitchPiecesOffset;
-    u32 NumRoadDecalMeshes;
-    u32 RoadDecalMeshesOffset;
-    u32 HeaderVersion;
+    u32 NumDecals = 0;
+    u32 DecalsOffset = 0;
+    u32 StitchMeshDataOffset = 0;
+    u32 StitchRenderableOffset = 0;
+    u32 NumStitchPieces = 0;
+    u32 StitchPiecesOffset = 0;
+    u32 NumRoadDecalMeshes = 0;
+    u32 RoadDecalMeshesOffset = 0;
+    u32 HeaderVersion = 0;
     //996 bytes padding
 
     void Read(BinaryReader& data)
@@ -66,14 +66,14 @@ static_assert(sizeof(TerrainSubzoneData) == 108, "sizeof(TerrainSubzoneData) mus
 
 struct TerrainPatch
 {
-    u32 InstanceOffset;
+    u32 InstanceOffset = 0;
     Vec3 Position;
     Mat3 Rotation;
-    u32 SubmeshIndex;
+    u32 SubmeshIndex = 0;
     Vec3 LocalAabbMin;
     Vec3 LocalAabbMax;
     Vec3 LocalBspherePosition;
-    f32 LocalBsphereRadius;
+    f32 LocalBsphereRadius = 0.0f;
 
     void Read(BinaryReader& data)
     {
@@ -91,14 +91,14 @@ static_assert(sizeof(TerrainPatch) == 96, "sizeof(TerrainPatch) must equal 96 to
 
 struct TerrainStitchInstance
 {
-    u32 StitchChunkNameOffset;
-    u32 NumSkirts;
-    u32 SkirtsOffset;
-    u32 NumStitchedSkirts;
-    u32 StitchedSkirtsOffset;
+    u32 StitchChunkNameOffset = 0;
+    u32 NumSkirts = 0;
+    u32 SkirtsOffset = 0;
+    u32 NumStitchedSkirts = 0;
+    u32 StitchedSkirtsOffset = 0;
     Vec3 Position;
     Mat3 Rotation;
-    u32 HavokHandle;
+    u32 HavokHandle = 0;
 
     void Read(BinaryReader& data)
     {
@@ -117,13 +117,13 @@ static_assert(sizeof(TerrainStitchInstance) == 72, "sizeof(TerrainStitchInstance
 
 struct RoadMeshData
 {
-    u32 NumMeshInstances;
-    u32 MaterialOffset;
-    u32 MaterialHandle;
-    u32 MaterialMapOffset;
-    u32 MeshDataOffset;
-    u32 MeshOffset;
-    u32 RenderableOffset;
+    u32 NumMeshInstances = 0;
+    u32 MaterialOffset = 0;
+    u32 MaterialHandle = 0;
+    u32 MaterialMapOffset = 0;
+    u32 MeshDataOffset = 0;
+    u32 MeshOffset = 0;
+    u32 RenderableOffset = 0;
     Vec3 Position;
 
     void Read(BinaryReader& data)

@@ -10,6 +10,7 @@ class Vec3Property : public IZoneProperty
 public:
     Vec3 Data;
 
+#pragma warning(disable:4100)
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
         Type = type;
@@ -21,4 +22,5 @@ public:
         Data.z = reader.ReadFloat();
         return true;
     }
+#pragma warning(default:4100)
 };

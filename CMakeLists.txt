@@ -7,9 +7,6 @@ project ("RfgTools++ Solution")
 
 option(RFGTOOLS_BUILD_ZLIB "If disabled RfgTools++ won't build zlib and instead will rely on another module building and exporting it's target" ON)
 
-# Update git submodules
-include("GitSubmodule.cmake")
-
 set(CMAKE_CXX_STANDARD           20)
 set(CMAKE_CXX_STANDARD_REQUIRED  ON)
 set(CMAKE_CXX_EXTENSIONS         OFF)

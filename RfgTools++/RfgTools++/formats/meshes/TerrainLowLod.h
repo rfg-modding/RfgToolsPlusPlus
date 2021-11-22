@@ -24,8 +24,8 @@
 class TerrainLowLod
 {
 public:
-	//Read header data from cpu file
-	void Read(BinaryReader& cpuFile, const string& name);
+    //Read header data from cpu file
+    void Read(BinaryReader& cpuFile, const string& name);
     //Read vertex and index buffers of a mesh (low lod terrain files contain 9). Must call Read to get data from cpu file first
     std::optional<MeshInstanceData> ReadMeshData(BinaryReader& gpuFile, u32 index);
 
@@ -66,8 +66,8 @@ public:
     //Mesh data
     std::vector<MeshDataBlock> Meshes;
 
-	//Members below this aren't part of the file
-	string Name;
+    //Members below this aren't part of the file
+    string Name;
 
 private:
     void ReadHavokBinaryTagfile(BinaryReader& cpuFile);

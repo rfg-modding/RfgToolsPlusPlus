@@ -32,12 +32,12 @@ public:
     //Shared mesh header used by all mesh types
     MeshHeaderShared Header;
     //Static mesh specific header data (may be similar to other mesh types data)
-    u32 NumLods;
-    u32 LodSubmeshIdOffset;
-    u32 MeshTagsOffset;
-    u32 MeshTagsNumTags;
-    u32 MeshTagsInternalOffset;
-    u32 CmIndex;
+    u32 NumLods = 0;
+    u32 LodSubmeshIdOffset = 0;
+    u32 MeshTagsOffset = 0;
+    u32 MeshTagsNumTags = 0;
+    u32 MeshTagsInternalOffset = 0;
+    u32 CmIndex = 0;
 
     //Mesh data
     MeshDataBlock MeshInfo;
@@ -46,7 +46,7 @@ public:
     MaterialBlock MaterialBlock;
 
     //Texture names
-    std::vector<string> TextureNames;
+    std::vector<string> TextureNames = {};
 
 private:
     bool readHeader_ = false;

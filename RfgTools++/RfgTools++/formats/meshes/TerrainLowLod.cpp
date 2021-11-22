@@ -102,7 +102,7 @@ void TerrainLowLod::Read(BinaryReader& cpuFile, const string& name)
 	cpuFile.Align(16);
 	cpuFile.Skip(Data.LayerMap.DataSize);
 	cpuFile.Skip(Data.LayerMap.NumMaterials * 4);
-	for (int i = 0; i < Data.LayerMap.NumMaterials; i++)
+	for (u32 i = 0; i < Data.LayerMap.NumMaterials; i++)
 	{
 		LayerMapMaterialNames.push_back(cpuFile.ReadNullTerminatedString());
 	}
@@ -205,8 +205,6 @@ std::optional<MeshInstanceData> TerrainLowLod::ReadMeshData(BinaryReader& gpuFil
 
 	//Get mesh data
 	MeshDataBlock& mesh = Meshes[index];
-	SubmeshData& submesh = mesh.Submeshes[0];
-	RenderBlock& renderBlock = mesh.RenderBlocks[0];
 
 	gpuFile.SeekBeg(meshStartPos);
 	u32 startCRC = gpuFile.ReadUint32();
@@ -241,7 +239,7 @@ std::optional<MeshInstanceData> TerrainLowLod::ReadMeshData(BinaryReader& gpuFil
 void TerrainLowLod::ReadHavokBinaryTagfile(BinaryReader& cpuFile)
 {
 	//Todo: Actually read and parse these
-	long tagfileStartOffset = cpuFile.Position();
+	size_t tagfileStartOffset = cpuFile.Position();
 	u32 maybeHavokBinaryTagfileSig = cpuFile.ReadUint32();
 	if (maybeHavokBinaryTagfileSig != 1212891981)
 		throw std::runtime_error("Invalid havok binary tagfile sig in " + Name);

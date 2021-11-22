@@ -38,6 +38,7 @@ namespace MeshHelpers
     }
 
     //Convert byte span to byte vector. Needed since tinygltf stores data in std::vector<u8>
+#pragma warning(disable:4505)
     static std::vector<unsigned char> ToByteVector(std::span<u8>& source)
     {
         //Copy span to vector
@@ -48,6 +49,7 @@ namespace MeshHelpers
 
         return out;
     }
+#pragma warning(default:4505)
 
     //Write binary vertex buffer to a .obj file
     bool WriteVerticesToObj(std::ofstream& obj, MeshDataBlock& info, std::span<u8> vertexBufferBytes);

@@ -10,9 +10,9 @@ class MaterialBlock
 {
 public:
     //Material map
-    u32 MaterialsOffsetRelative; //Offset to material data relative to the material map
-    u32 NumMaterials; //Number of materials
-    std::vector<u32> MaterialOffsets; //Offset of each material in the cpu file
+    u32 MaterialsOffsetRelative = 0; //Offset to material data relative to the material map
+    u32 NumMaterials = 0; //Number of materials
+    std::vector<u32> MaterialOffsets = {}; //Offset of each material in the cpu file
 
     //Materials
     std::vector<RfgMaterial> Materials = {};
@@ -20,7 +20,6 @@ public:
     void Read(BinaryReader& data, u32 materialListOffset)
     {
         //Material map data
-        u32 materialMapOffset = data.Position(); //Todo: Could this be alignment?
         MaterialsOffsetRelative = data.ReadUint32();
         NumMaterials = data.ReadUint32();
 

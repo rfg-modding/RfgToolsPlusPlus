@@ -55,5 +55,5 @@ target_include_directories(RfgTools++ SYSTEM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/tinygltf/
 )
 
-#target_link_libraries(RfgTools++ PRIVATE zlibstatic)
 target_link_libraries(RfgTools++ PRIVATE Common)
+target_compile_options(RfgTools++ PRIVATE /EHsc /W3 ${EXTRA_OPTIONS})

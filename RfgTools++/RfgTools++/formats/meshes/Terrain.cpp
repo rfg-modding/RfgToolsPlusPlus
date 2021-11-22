@@ -68,7 +68,7 @@ void Terrain::Read(BinaryReader& cpuFile, const string& name)
 			{
 				cpuFile.Skip(4);
 			}
-			else if (cpuFile.PeekChar() == i + 1)
+			else if ((u32)cpuFile.PeekChar() == i + 1)
 			{
 				cpuFile.Skip(4);
 				i++;
@@ -76,7 +76,7 @@ void Terrain::Read(BinaryReader& cpuFile, const string& name)
 				//Hit version at start of mesh data block, stop
 				if (cpuFile.PeekChar() != 0)
 				{
-					cpuFile.SeekCur(-4);
+					cpuFile.SeekReverse(4);
 					break;
 				}
 			}

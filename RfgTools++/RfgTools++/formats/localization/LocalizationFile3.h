@@ -24,9 +24,9 @@ public:
     void Read(BinaryReader& reader, std::string_view name);
 
     //Header
-    u32 Signature;
-    u32 Version;
-    u32 NumStrings;
+    u32 Signature = 0;
+    u32 Version = 0;
+    u32 NumStrings = 0;
 
     //Data
     std::vector<LocalizationEntry3> Entries = {};

@@ -9,6 +9,7 @@ enum class PrimitiveTopology : u8
 {
     TriangleStrip = 0, //internally D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP
     TriangleList = 1, //internally D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+    Invalid = 2,
 };
 
 //Vertex formats used by RFG(R) meshes
@@ -209,6 +210,7 @@ static std::unordered_map<VertexFormat, VertexFormatLayout> VertexFormatLayouts
     }
 };
 
+#pragma warning(disable:4505)
 static std::optional<VertexFormatLayout> GetVertexFormatLayout(VertexFormat format)
 {
     auto search = VertexFormatLayouts.find(format);
@@ -217,3 +219,4 @@ static std::optional<VertexFormatLayout> GetVertexFormatLayout(VertexFormat form
     else
         return search->second; //Found
 }
+#pragma warning(default:4505)

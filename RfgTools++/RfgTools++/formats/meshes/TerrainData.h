@@ -57,10 +57,10 @@ struct TerrainData
     u32 ObjectStubPtrPadding;
     //880 bytes padding
 
-	void Read(BinaryReader& cpuFile)
-	{
-		cpuFile.ReadToMemory(this, sizeof(TerrainData));
+    void Read(BinaryReader& cpuFile)
+    {
+        cpuFile.ReadToMemory(this, sizeof(TerrainData));
         cpuFile.Skip(880);
-	}
+    }
 };
 static_assert(sizeof(TerrainData) == 184, "sizeof(TerrainData) must be 184 bytes to match game data.");

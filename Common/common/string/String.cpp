@@ -93,10 +93,12 @@ namespace String
         return targetPos;
     }
 
+#pragma warning(disable:4996) //Disable warning about <codecvt> being deprecated. Fine for now since MSVC still lets us use it in c++20 and there's no standard replacement.
     //Source: https://stackoverflow.com/a/49741944
     std::wstring ToWideString(const std::string& in)
     {
         std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
         return converter.from_bytes(in);
     }
+#pragma warning(default: 4996)
 }

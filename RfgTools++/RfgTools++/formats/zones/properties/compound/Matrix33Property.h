@@ -10,6 +10,7 @@ class Matrix33Property : public IZoneProperty
 public:
     Mat3 Data;
 
+#pragma warning(disable:4100)
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
         Type = type;
@@ -23,11 +24,12 @@ public:
         Data.uvec.x = reader.ReadFloat();
         Data.uvec.y = reader.ReadFloat();
         Data.uvec.z = reader.ReadFloat();
-        
+
         Data.fvec.x = reader.ReadFloat();
         Data.fvec.y = reader.ReadFloat();
         Data.fvec.z = reader.ReadFloat();
-        
+
         return true;
     }
+#pragma warning(default:4100)
 };

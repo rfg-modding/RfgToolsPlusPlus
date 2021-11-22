@@ -9,15 +9,15 @@ class PegFile10
 {
 public:
     //Same data layout as the file (24 bytes)
-    u32 Signature;
-    u16 Version;
-    u16 Platform;
-    u32 DirectoryBlockSize;
-    u32 DataBlockSize;
-    u16 NumberOfBitmaps;
-    u16 Flags;
-    u16 TotalEntries;
-    u16 AlignValue;
+    u32 Signature = 0;
+    u16 Version = 0;
+    u16 Platform = 0;
+    u32 DirectoryBlockSize = 0;
+    u32 DataBlockSize = 0;
+    u16 NumberOfBitmaps = 0;
+    u16 Flags = 0;
+    u16 TotalEntries = 0;
+    u16 AlignValue = 0;
 
     //Past here isn't the same data layout as the file
     std::vector<PegEntry10> Entries = {};

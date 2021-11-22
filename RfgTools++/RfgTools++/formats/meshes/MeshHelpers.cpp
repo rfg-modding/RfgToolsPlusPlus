@@ -91,19 +91,19 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     rootNode.name = Path::GetFileNameNoExtension(outPath);
 
     //Index buffer
-    const u32 indexBufferIndex = model.buffers.size();
+    const int indexBufferIndex = static_cast<int>(model.buffers.size());
     indexBuffer.data = ToByteVector(indices);//ToByteVector(blockIndices);
     indexBuffer.name = "IndexBuffer";
     model.buffers.push_back(indexBuffer);
 
     //Vertex buffer
-    const u32 vertexBufferIndex = model.buffers.size();
+    const int vertexBufferIndex = static_cast<int>(model.buffers.size());
     vertexBuffer.data = ToByteVector(verticesGltfBytes);
     vertexBuffer.name = "VertexBuffer";
     model.buffers.push_back(vertexBuffer);
 
     //Vertex buffer view
-    const u32 vertexBufferViewIndex = model.bufferViews.size();
+    const int vertexBufferViewIndex = static_cast<int>(model.bufferViews.size());
     vertexBufferView.buffer = vertexBufferIndex;
     vertexBufferView.byteOffset = 0;
     vertexBufferView.byteLength = vertexBuffer.data.size();
@@ -112,7 +112,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     model.bufferViews.push_back(vertexBufferView);
 
     //Vertex accessors. Used for all submeshes. Index accessors vary by render block.
-    const u32 positionAccessorIndex = model.accessors.size();
+    const int positionAccessorIndex = static_cast<int>(model.accessors.size());
     positionAccessor.bufferView = vertexBufferViewIndex;
     positionAccessor.byteOffset = offsetof(GltfVertex, Position);
     positionAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
@@ -121,7 +121,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     positionAccessor.name = "PositionAccessor";
     model.accessors.push_back(positionAccessor);
 
-    const u32 normalAccessorIndex = model.accessors.size();
+    const int normalAccessorIndex = static_cast<int>(model.accessors.size());
     normalAccessor.bufferView = vertexBufferViewIndex;
     normalAccessor.byteOffset = offsetof(GltfVertex, Normal);
     normalAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
@@ -130,7 +130,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     normalAccessor.name = "NormalAccessor";
     model.accessors.push_back(normalAccessor);
 
-    const u32 tangentAccessorIndex = model.accessors.size();
+    const int tangentAccessorIndex = static_cast<int>(model.accessors.size());
     tangentAccessor.bufferView = vertexBufferViewIndex;
     tangentAccessor.byteOffset = offsetof(GltfVertex, Tangent);
     tangentAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
@@ -139,7 +139,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     tangentAccessor.name = "TangentAccessor";
     model.accessors.push_back(tangentAccessor);
 
-    const u32 texcoord0AccessorIndex = model.accessors.size();
+    const int texcoord0AccessorIndex = static_cast<int>(model.accessors.size());
     texcoord0Accessor.bufferView = vertexBufferViewIndex;
     texcoord0Accessor.byteOffset = offsetof(GltfVertex, Texcoord0);
     texcoord0Accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
@@ -149,7 +149,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     model.accessors.push_back(texcoord0Accessor);
 
     //Material used by all meshes
-    const u32 materialIndex = model.materials.size();
+    const int materialIndex = static_cast<int>(model.materials.size());
     tinygltf::Material& material = model.materials.emplace_back();
     material.pbrMetallicRoughness.baseColorFactor = { 1.0f, 0.9f, 0.9f, 1.0f };
     material.doubleSided = true;
@@ -158,8 +158,8 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     auto addImage = [&](const std::string& texturePath) -> tinygltf::Image&
     {
         tinygltf::Texture& texture = model.textures.emplace_back();
-        texture.source = model.images.size();
-        texture.sampler = model.samplers.size();
+        texture.source = static_cast<int>(model.images.size());
+        texture.sampler = static_cast<int>(model.samplers.size());
 
         tinygltf::Sampler& sampler = model.samplers.emplace_back();
         sampler.magFilter = TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR;
@@ -175,24 +175,24 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     //Add textures to material
     if (hasDiffuse)
     {
-        tinygltf::Image& image = addImage(diffusePath);
-        material.pbrMetallicRoughness.baseColorTexture.index = model.textures.size() - 1;
+        addImage(diffusePath);
+        material.pbrMetallicRoughness.baseColorTexture.index = static_cast<int>(model.textures.size()) - 1;
     }
     if (hasSpecular)
     {
         //Note: There isn't really a direct translation of specular textures to the PBR model that gltf uses.
         //This is only here so blender auto loads the texture. Most meshes will require some tweaking to look good in PBR renderers.
-        tinygltf::Image& image = addImage(specularPath);
-        material.pbrMetallicRoughness.metallicRoughnessTexture.index = model.textures.size() - 1;
+        addImage(specularPath);
+        material.pbrMetallicRoughness.metallicRoughnessTexture.index = static_cast<int>(model.textures.size()) - 1;
     }
     if (hasNormal)
     {
-        tinygltf::Image& image = addImage(normalPath);
-        material.normalTexture.index = model.textures.size() - 1;
+        addImage(normalPath);
+        material.normalTexture.index = static_cast<int>(model.textures.size()) - 1;
     }
 
     //Create gltf meshes
-    const u32 submeshesPerLodLevel = meshInfo.Submeshes.size() / numLods;
+    const u32 submeshesPerLodLevel = static_cast<int>(meshInfo.Submeshes.size()) / numLods;
     for (u32 i = 0; i < meshInfo.Submeshes.size(); i++)
     {
         const SubmeshData& submesh = meshInfo.Submeshes[i];
@@ -224,7 +224,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
             tinygltf::Accessor indexAccessor;
 
             //Index buffer view
-            u32 indexBufferViewIndex = model.bufferViews.size();
+            const int indexBufferViewIndex = static_cast<int>(model.bufferViews.size());
             indexBufferView.buffer = indexBufferIndex;
             indexBufferView.byteOffset = block.StartIndex * meshInfo.IndexSize;
             indexBufferView.byteLength = block.NumIndices * meshInfo.IndexSize;
@@ -232,7 +232,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
             model.bufferViews.push_back(indexBufferView);
 
             //Index accessor
-            primitive.indices = model.accessors.size();
+            primitive.indices = static_cast<int>(model.accessors.size());
             indexAccessor.bufferView = indexBufferViewIndex;
             indexAccessor.byteOffset = 0;
             indexAccessor.componentType = indexType;
@@ -255,8 +255,8 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
             //Add submesh to model
             tinygltf::Node node;
             node.name = "Block" + std::to_string(j);
-            node.mesh = model.meshes.size();
-            const u32 nodeIndex = model.nodes.size();
+            node.mesh = static_cast<int>(model.meshes.size());
+            const int nodeIndex = static_cast<int>(model.nodes.size());
             model.meshes.push_back(mesh);
             model.nodes.push_back(node);
 
@@ -270,14 +270,14 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
         //Organize each submesh into their own subnode if > 1 submesh
         if (meshInfo.Submeshes.size() > 1)
         {
-            rootNode.children.push_back(model.nodes.size());
+            rootNode.children.push_back(static_cast<int>(model.nodes.size()));
             model.nodes.push_back(submeshNode);
         }
     }
 
     //Add scene and root node to model
     model.nodes.push_back(rootNode);
-    scene.nodes.push_back(scene.nodes.size());
+    scene.nodes.push_back(static_cast<int>(scene.nodes.size()));
     model.scenes.push_back(scene);
 
     //Asset metadata

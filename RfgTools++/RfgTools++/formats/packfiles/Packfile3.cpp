@@ -63,7 +63,7 @@ Packfile3::Packfile3(const Packfile3& other) //Copy constructor
     if(Header.NameBlockSize > 0)
     {
         EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_));
-        for (int i = 0; i < Header.NameBlockSize - 1; i++)
+        for (u32 i = 0; i < Header.NameBlockSize - 1; i++)
         {
             if (filenamesBuffer_[i] == '\0')
                 EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_) + i + 1);
@@ -193,9 +193,8 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
 
     //Make array of pointers to each string for easy access. String data is still held in single buffer
     EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_));
-    for (int i = 0; i < Header.NameBlockSize - 1; i++)
+    for (u32 i = 0; i < Header.NameBlockSize - 1; i++)
     {
-        auto pos6 = reader->Position();
         if (filenamesBuffer_[i] == '\0')
             EntryNames.push_back(reinterpret_cast<const char*>(filenamesBuffer_) + i + 1);
     }
@@ -496,8 +495,8 @@ void Packfile3::ReadAsmFiles()
         while (iterator != asmFile.Containers.end())
         {
             bool foundContainer = false;
-            for (auto& name : EntryNames)
-                if (iterator->Name + ".str2_pc" == name)
+            for (auto& entryName : EntryNames)
+                if (iterator->Name + ".str2_pc" == entryName)
                     foundContainer = true;
 
             if (!foundContainer)
@@ -579,14 +578,13 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
 
         if (compressed && condensed && curSubfile != subfilePaths.size() - 1 && !isStr2)
         {
-            u32 alignPad = BinaryWriter::CalcAlign(curDataOffset, 16);
-            u32 alignPad2 = BinaryWriter::CalcAlign(totalDataSize, 16);
+            u32 alignPad = (u32)BinaryWriter::CalcAlign(curDataOffset, 16);
+            u32 alignPad2 = (u32)BinaryWriter::CalcAlign(totalDataSize, 16);
             curDataOffset += alignPad;
-            //header.DataSize += (u32)inFile.file_size();
             totalDataSize += alignPad2;
         }
         else if (!condensed)
-            curDataOffset += out.CalcAlign(curDataOffset, 2048);
+            curDataOffset += (u32)out.CalcAlign(curDataOffset, 2048);
 
         curSubfile++;
     }
@@ -618,10 +616,10 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
     //Calc data start and skip to it's location. We'll circle back and write header + entries at the end when he have all stats
     u32 dataStart = 0;
     dataStart += 2048; //Header size
-    dataStart += entries.size() * 28; //Each entry is 28 bytes
-    dataStart += out.CalcAlign(dataStart, 2048); //Align(2048) after end of entries
+    dataStart += (u32)entries.size() * 28; //Each entry is 28 bytes
+    dataStart += (u32)out.CalcAlign(dataStart, 2048); //Align(2048) after end of entries
     dataStart += totalNamesSize; //Filenames list
-    dataStart += out.CalcAlign(dataStart, 2048); //Align(2048) after end of file names
+    dataStart += (u32)out.CalcAlign(dataStart, 2048); //Align(2048) after end of file names
     out.WriteNullBytes(dataStart - out.Position());
 
     //Write subfile data
@@ -630,7 +628,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
         //Todo: Try to use piecemeal deflate method with z_stream to compress data
         //Todo: There's only one zlib header
         //Todo: Each entry has a compressed size value, so can't just make one big buffer and compress it all at once
-        z_stream deflateStream;
+        z_stream deflateStream = {};
         deflateStream.zalloc = Z_NULL;
         deflateStream.zfree = Z_NULL;
         deflateStream.opaque = Z_NULL;
@@ -650,7 +648,7 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
             //Add align(16) null bytes after uncompressed data. Not added to entry.DataSize but necessary for compression for some reason
             if (i != entries.size() - 1 && !isStr2)
             {
-                u32 alignPad = BinaryWriter::CalcAlign(tempDataOffset, 16);
+                u32 alignPad = (u32)BinaryWriter::CalcAlign(tempDataOffset, 16);
                 if (alignPad != 0)
                 {
                     tempDataOffset += alignPad;
@@ -661,12 +659,12 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
                 }
             }
 
-            uLong deflateUpperBound = deflateBound(&deflateStream, subFileData.size());
+            uLong deflateUpperBound = deflateBound(&deflateStream, (uLong)subFileData.size());
             char* dest = new char[deflateUpperBound];
             defer(delete[] dest);
 
             deflateStream.next_in = (Bytef*)subFileData.data();
-            deflateStream.avail_in = subFileData.size();
+            deflateStream.avail_in = (u32)subFileData.size();
             deflateStream.next_out = (Bytef*)dest;
             deflateStream.avail_out = deflateUpperBound;
             deflate(&deflateStream, Z_SYNC_FLUSH);
@@ -815,7 +813,6 @@ tinyxml2::XMLDocument* GetStreamsFile(Packfile3* packfile)
     //Set entries
     for (u32 i = 0; i < packfile->Entries.size(); i++)
     {
-        auto& entry = packfile->Entries[i];
         auto* entryElement = streamsBlock->InsertNewChildElement("entry");
         entryElement->SetAttribute("name", packfile->EntryNames[i]);
         entryElement->SetText(packfile->EntryNames[i]);

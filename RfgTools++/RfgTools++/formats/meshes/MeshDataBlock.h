@@ -23,7 +23,7 @@ public:
     //Vertex data layout (12 bytes)
     u32 NumVertices = 0;
     u8 VertexStride0 = 0;
-    VertexFormat VertFormat; //1 byte in files
+    VertexFormat VertFormat = VertexFormat::Invalid; //1 byte in files
     u8 NumUvChannels = 0;
     u8 VertexStride1 = 0;
     u32 VertexOffset = 0;
@@ -32,7 +32,7 @@ public:
     u32 NumIndices = 0;
     u32 IndicesOffset = 0;
     u8 IndexSize = 0;
-    PrimitiveTopology PrimitiveType; //1 byte in files
+    PrimitiveTopology PrimitiveType = PrimitiveTopology::Invalid; //1 byte in files
     u16 NumRenderBlocks = 0;
 
     //Size of all data before this line = 48 bytes in file. Data after this has dynamic size
@@ -55,7 +55,7 @@ public:
         {
             SubmeshData& submesh = Submeshes.emplace_back();
             reader.ReadToMemory(&submesh, sizeof(SubmeshData));
-            NumRenderBlocks += submesh.NumRenderBlocks;
+            NumRenderBlocks += static_cast<u32>(submesh.NumRenderBlocks);
         }
         for (u32 i = 0; i < NumRenderBlocks; i++)
         {
@@ -69,7 +69,7 @@ public:
         {
             IndicesOffset = 16;
             u32 indicesEnd = IndicesOffset + (NumIndices * IndexSize);
-            VertexOffset = indicesEnd + BinaryWriter::CalcAlign(indicesEnd, 16);
+            VertexOffset = indicesEnd + static_cast<u32>(BinaryWriter::CalcAlign(indicesEnd, 16));
         }
 
         //Patch render block offsets for easy access later

@@ -9,6 +9,7 @@ class BoolProperty : public IZoneProperty
 public:
     bool Data;
 
+#pragma warning(disable:4100)
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
         Type = type;
@@ -17,4 +18,5 @@ public:
         Data = (bool)reader.ReadUint8(); //Bool stored as a single byte in binary file
         return true;
     }
+#pragma warning(default:4100)
 };

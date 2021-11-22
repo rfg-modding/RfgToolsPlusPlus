@@ -9,6 +9,7 @@ class UintProperty : public IZoneProperty
 public:
     u32 Data;
 
+#pragma warning(disable:4100)
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
         Type = type;
@@ -17,4 +18,5 @@ public:
         Data = reader.ReadUint32();
         return true;
     }
+#pragma warning(default:4100)
 };

@@ -37,13 +37,13 @@ void PegFile10::Write(BinaryWriter& cpuFile, BinaryWriter& gpuFile)
         gpuFile.WriteFromMemory(entry.RawData.data(), entry.RawData.size_bytes());
         gpuFile.Align(AlignValue);
     }
-    DataBlockSize = gpuFile.Position(); //Update header data block size
+    DataBlockSize = (u32)gpuFile.Position(); //Update header data block size
 
     //Update entry offsets and frame sizes based on entry.RawData
     u32 offset = 0;
     for (auto& entry : Entries)
     {
-        entry.FrameSize = entry.RawData.size_bytes();
+        entry.FrameSize = (u32)entry.RawData.size_bytes();
         entry.DataOffset = offset;
         offset += entry.FrameSize;
     }

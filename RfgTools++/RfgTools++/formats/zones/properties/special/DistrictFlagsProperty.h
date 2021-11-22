@@ -20,6 +20,7 @@ class DistrictFlagsProperty : public IZoneProperty
 public:
     DistrictFlags Data = DistrictFlags::None;
 
+#pragma warning(disable:4100)
     bool Read(BinaryReader& reader, u16 type, u16 size, u32 nameHash)
     {
         Type = type;
@@ -28,4 +29,5 @@ public:
         Data = (DistrictFlags)reader.ReadUint8();
         return true;
     }
+#pragma warning(default:4100)
 };
