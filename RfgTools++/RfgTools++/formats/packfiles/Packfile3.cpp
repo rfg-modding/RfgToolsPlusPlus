@@ -255,6 +255,7 @@ std::vector<MemoryFile> Packfile3::ExtractSubfiles(bool writeStreamsFile)
 
     //Create reader
     BinaryReader* reader = nullptr;
+    defer(delete reader);
     if (packfileSourceType == DataSource::File)
         reader = new BinaryReader(path_);
     else if (packfileSourceType == DataSource::Memory)
