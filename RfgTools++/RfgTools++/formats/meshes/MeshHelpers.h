@@ -9,8 +9,8 @@
 struct MeshInstanceData
 {
     MeshDataBlock Info;
-    std::span<u8> VertexBuffer;
-    std::span<u8> IndexBuffer;
+    std::vector<u8> VertexBuffer;
+    std::vector<u8> IndexBuffer;
 };
 
 //Gltf compatible vertex
@@ -62,5 +62,5 @@ namespace MeshHelpers
                      const string& diffusePath = "", const string& specularPath = "", const string& normalPath = "");
 
     //Convert RFG vertex format to gltf compatible format. Caller must delete[] the returned span it succeeds.
-    std::optional<std::span<u8>> ConvertVerticesToGltfFormat(const MeshDataBlock& meshInfo, std::span<u8> rfgVertices);
+    std::optional<std::vector<u8>> ConvertVerticesToGltfFormat(const MeshDataBlock& meshInfo, std::span<u8> rfgVertices);
 }

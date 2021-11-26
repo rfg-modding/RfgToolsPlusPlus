@@ -4,7 +4,7 @@
 
 namespace File
 {
-    std::vector<char> ReadAllBytes(const std::string& filePath)
+    std::vector<u8> ReadAllBytes(const std::string& filePath)
     {
         std::ifstream file(filePath, std::ios::ate | std::ios::binary);
 
@@ -14,32 +14,13 @@ namespace File
         }
 
         size_t fileSize = static_cast<size_t>(file.tellg());
-        std::vector<char> buffer(fileSize);
+        std::vector<u8> buffer(fileSize);
 
         file.seekg(0);
-        file.read(buffer.data(), fileSize);
+        file.read((char*)buffer.data(), fileSize);
         file.close();
 
         return buffer;
-    }
-
-    std::span<u8> ReadAllBytesToSpan(const std::string& filePath)
-    {
-        std::ifstream file(filePath, std::ios::ate | std::ios::binary);
-
-        if (!file.is_open())
-        {
-            throw std::runtime_error("failed to open file!"); //Todo: Note file name/path in error. Maybe better to just return an optional
-        }
-
-        size_t fileSize = static_cast<size_t>(file.tellg());
-        char* buffer = new char[fileSize];
-
-        file.seekg(0);
-        file.read(buffer, fileSize);
-        file.close();
-
-        return std::span<u8>{ (u8*)buffer, fileSize };
     }
 
     std::string ReadToString(const string& path)

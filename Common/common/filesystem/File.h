@@ -6,8 +6,7 @@
 
 namespace File
 {
-    [[nodiscard]] std::vector<char> ReadAllBytes(const std::string& filePath);
-    [[nodiscard]] std::span<u8> ReadAllBytesToSpan(const std::string& filePath);
+    [[nodiscard]] std::vector<u8> ReadAllBytes(const std::string& filePath);
     [[nodiscard]] std::string ReadToString(const string& path);
     void WriteToFile(const string& path, std::span<u8> data);
 }

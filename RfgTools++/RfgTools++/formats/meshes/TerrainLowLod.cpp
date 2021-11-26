@@ -213,15 +213,15 @@ std::optional<MeshInstanceData> TerrainLowLod::ReadMeshData(BinaryReader& gpuFil
 
 	//Read index buffer
 	gpuFile.SeekBeg(meshStartPos + mesh.IndicesOffset);
-	u32 indexBufferSize = mesh.NumIndices * mesh.IndexSize;
-	u8* indexBuffer = new u8[indexBufferSize];
-	gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+	u32 indicesSize = mesh.NumIndices * mesh.IndexSize;
+	std::vector<u8> indices(indicesSize);
+	gpuFile.ReadToMemory(indices.data(), indicesSize);
 
 	//Read vertex buffer
 	gpuFile.SeekBeg(meshStartPos + mesh.VertexOffset);
-	u32 vertexBufferSize = mesh.NumVertices * mesh.VertexStride0;
-	u8* vertexBuffer = new u8[vertexBufferSize];
-	gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+	u32 verticesSize = mesh.NumVertices * mesh.VertexStride0;
+	std::vector<u8> vertices(verticesSize);
+	gpuFile.ReadToMemory(vertices.data(), verticesSize);
 
 	u32 endCRC = gpuFile.ReadUint32();
 	if (startCRC != endCRC)
@@ -231,8 +231,8 @@ std::optional<MeshInstanceData> TerrainLowLod::ReadMeshData(BinaryReader& gpuFil
 	return MeshInstanceData
 	{
 		.Info = Meshes[index],
-		.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
-		.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+		.VertexBuffer = vertices,
+		.IndexBuffer = indices
 	};
 }
 

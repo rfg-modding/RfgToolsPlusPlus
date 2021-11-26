@@ -33,11 +33,9 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
         return false;
 
     //Convert vertices to gltf compatible format
-    std::optional<std::span<u8>> maybeGltfVertices = MeshHelpers::ConvertVerticesToGltfFormat(meshInfo, vertices);
-    defer(if (maybeGltfVertices.has_value()) delete[] maybeGltfVertices.value().data());
-    if (!maybeGltfVertices)
+    std::optional<std::vector<u8>> gltfVertices = MeshHelpers::ConvertVerticesToGltfFormat(meshInfo, vertices);
+    if (!gltfVertices)
         return false;
-    std::span<u8> verticesGltfBytes = maybeGltfVertices.value();
 
     //Determine index type
     int indexType = 0;
@@ -60,7 +58,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
     //Find min and max vertex positions & calculate bounding box size
     Vec3 posMin;
     Vec3 posMax;
-    std::span<GltfVertex> verticesGltfTyped = ToTypedSpan<GltfVertex>(verticesGltfBytes);
+    std::span<GltfVertex> verticesGltfTyped = ToTypedSpan<GltfVertex>(gltfVertices.value());
     for (const GltfVertex& vert : verticesGltfTyped)
     {
         //Min
@@ -98,7 +96,7 @@ bool MeshHelpers::WriteToGltf(const MeshDataBlock& meshInfo, u32 numLods, std::s
 
     //Vertex buffer
     const int vertexBufferIndex = static_cast<int>(model.buffers.size());
-    vertexBuffer.data = ToByteVector(verticesGltfBytes);
+    vertexBuffer.data = gltfVertices.value();
     vertexBuffer.name = "VertexBuffer";
     model.buffers.push_back(vertexBuffer);
 
@@ -306,26 +304,24 @@ struct Vec2_I16
     i16 x, y;
 };
 
-std::optional<std::span<u8>> MeshHelpers::ConvertVerticesToGltfFormat(const MeshDataBlock& meshInfo, std::span<u8> rfgVertices)
+std::optional<std::vector<u8>> MeshHelpers::ConvertVerticesToGltfFormat(const MeshDataBlock& meshInfo, std::span<u8> rfgVertices)
 {
     //Create buffer for gltf vertices
-    std::span<GltfVertex> verticesGltf = { new GltfVertex[meshInfo.NumVertices], meshInfo.NumVertices };
+    std::vector<u8> verticesGltf(meshInfo.NumVertices * sizeof(GltfVertex));
 
     //Get rfg vertices data layout
     std::optional<VertexFormatLayout> maybeVertexLayout = GetVertexFormatLayout(meshInfo.VertFormat);
     if (!maybeVertexLayout)
-    {
-        delete[] verticesGltf.data();
         return {};
-    }
-    const VertexFormatLayout formatLayout = maybeVertexLayout.value();
 
     //Convert each rfg vertex to a gltf vertex
+    const VertexFormatLayout formatLayout = maybeVertexLayout.value();
+    std::span<GltfVertex> verticesView = { (GltfVertex*)verticesGltf.data(), verticesGltf.size() / sizeof(GltfVertex) };
     for (u32 i = 0; i < meshInfo.NumVertices; i++)
     {
         //Vertices
         u8* rfgVert = rfgVertices.data() + (i * meshInfo.VertexStride0);
-        GltfVertex& gltfVert = verticesGltf[i];
+        GltfVertex& gltfVert = verticesView[i];
 
         //Convert components which are useable by gltf
         for (const VertexComponentLayout& component : formatLayout.Components)
@@ -378,5 +374,5 @@ std::optional<std::span<u8>> MeshHelpers::ConvertVerticesToGltfFormat(const Mesh
         }
     }
 
-    return std::span<u8>{ (u8*)verticesGltf.data(), verticesGltf.size() * sizeof(GltfVertex) };
+    return verticesGltf;
 }

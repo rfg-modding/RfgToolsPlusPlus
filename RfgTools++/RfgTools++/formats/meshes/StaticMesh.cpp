@@ -60,22 +60,22 @@ std::optional<MeshInstanceData> StaticMesh::ReadMeshData(BinaryReader& gpuFile)
 
     //Read index buffer
     gpuFile.SeekBeg(MeshInfo.IndicesOffset);
-    u32 indexBufferSize = MeshInfo.NumIndices * MeshInfo.IndexSize;
-    u8* indexBuffer = new u8[indexBufferSize];
-    gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+    u32 indicesSize = MeshInfo.NumIndices * MeshInfo.IndexSize;
+    std::vector<u8> indices(indicesSize);
+    gpuFile.ReadToMemory(indices.data(), indicesSize);
 
     //Read vertex buffer
     gpuFile.SeekBeg(MeshInfo.VertexOffset);
-    u32 vertexBufferSize = MeshInfo.NumVertices * MeshInfo.VertexStride0;
-    u8* vertexBuffer = new u8[vertexBufferSize];
-    gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+    u32 verticesSize = MeshInfo.NumVertices * MeshInfo.VertexStride0;
+    std::vector<u8> vertices(verticesSize);
+    gpuFile.ReadToMemory(vertices.data(), verticesSize);
 
     //Return submesh data buffers
     return MeshInstanceData
     {
         .Info = MeshInfo,
-        .VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
-        .IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+        .VertexBuffer = vertices,
+        .IndexBuffer = indices
     };
 }
 
@@ -88,18 +88,13 @@ void StaticMesh::WriteToGltf(BinaryReader& gpuFile, const string& outPath, const
     }
 
     //Extract mesh data
-    std::optional<MeshInstanceData> maybeMeshData = ReadMeshData(gpuFile);
-    if (!maybeMeshData)
+    std::optional<MeshInstanceData> data = ReadMeshData(gpuFile);
+    if (!data)
     {
         printf("Error in StaticMesh::WriteToGltf() for mesh %s. Failed to read mesh data.\n", Name.c_str());
         return;
     }
-    MeshInstanceData data = maybeMeshData.value();
-    std::span<u8> indices = data.IndexBuffer;
-    std::span<u8> vertices = data.VertexBuffer;
-    defer(delete[] indices.data());
-    defer(delete[] vertices.data());
 
     //Write mesh to gltf file
-    MeshHelpers::WriteToGltf(MeshInfo, NumLods, indices, vertices, outPath, diffusePath, specularPath, normalPath);
+    MeshHelpers::WriteToGltf(MeshInfo, NumLods, data.value().IndexBuffer, data.value().VertexBuffer, outPath, diffusePath, specularPath, normalPath);
 }

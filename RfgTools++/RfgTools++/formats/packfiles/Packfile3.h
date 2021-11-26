@@ -10,6 +10,8 @@
 #include <filesystem>
 
 class BinaryReader;
+class MemoryFile;
+class MemoryFileList;
 
 //Data source to read packfile from
 enum class DataSource
@@ -24,13 +26,6 @@ enum class DataSource
 #define PACKFILE_FLAG_CONDENSED 2
 #define INVALID_HANDLE 0xFFFFFFFF
 
-//Essentially a labelled span. Used for files stored in memory.
-struct MemoryFile
-{
-    string Filename;
-    std::span<u8> Bytes;
-};
-
 //Packfile version 3 used in RFG and RFGR (vpp_pc and str2_pc)
 class Packfile3
 {
@@ -38,39 +33,29 @@ public:
     //Load a packfile from a file
     Packfile3(const string& path);
     //Load a packfile from a memory buffer
-    Packfile3(std::span<u8> buffer);
-    //Delete the default constructor to ensure Packfile3 instances are always valid
+    Packfile3(std::vector<u8> buffer);
+    //Delete the default constructor to ensure Packfile3 instances are always valid (requires eiter path or buffer to parse)
     Packfile3() = delete;
-    ~Packfile3();
-    Packfile3(const Packfile3& other); //Copy constructor
-    Packfile3(Packfile3&& other) noexcept; //Move constructor
-    Packfile3& operator=(const Packfile3& other); //Copy assignment operator
-    Packfile3& operator=(Packfile3&& other) noexcept; //Move assignment operator
 
-    //Functions which need access to the data source
-    //Reads header, entries, and filenames from packfile
+    //Read the header, entries, and filenames from packfile
     void ReadMetadata(BinaryReader* reader = nullptr);
-    //Extracts subfiles to outputPath
-    void ExtractSubfiles(const string& outputPath, bool writeStreamsFile = false);
-    //Todo: Make the way this functions returned memory must be freed more obvious. Currently odd and easy to mess up
-    //Extracts subfiles in memory and returns it. NOTE: This overload only supports C&C packfiles and the user must free the returned files memory.
-    //Also note that you only need to free the first file since the extraction method decompresses them this way
-    std::vector<MemoryFile> ExtractSubfiles(bool writeStreamsFile = false);
 
-    //Attempts to extract a subfiles data as a raw byte array. User must free memory once they're done with it
-    //Handles decompressing compressed subfiles. Currently does not work on packfiles with both the compressed & condensed flags
-    //If 'fullExtractFallback' is true it'll do a full extract and pull the requested file. This is very inefficient and so you
-    //should really only do it for small files like str2_pc files.
-    std::optional<std::span<u8>> ExtractSingleFile(s_view name, bool fullExtractFallback = false);
-    //Read data from any asm_pc files the vpp_pc contains. Used to read contents of str2_pc files inside vpp_pc files
+    //Extract subfiles to outputPath
+    void ExtractSubfiles(const string& outputPath, bool writeStreamsFile = false);
+
+    //Extract subfiles into memory and returns them
+    MemoryFileList ExtractSubfiles(bool writeStreamsFile = false);
+
+    //Extract a single subfile. The 'fullExtractFallback' argument must be true to use this on files which are both compressed and condensed.
+    //It's disabled by default since C&C files don't support single file extracts, and must be extracted fully (slower)
+    std::optional<std::vector<u8>> ExtractSingleFile(s_view name, bool fullExtractFallback = false);
+
+    //Parse all asm_pc files in the vpp_pc. This provides a list of all files within the str2_pc files without parsing all of them.
     void ReadAsmFiles();
 
-    //Get information about the packfile
-    bool CanExtractSingleFile() const;
     bool Contains(s_view subfileName);
     void SetName(const string& name) { name_ = name; }
     string Name() const { return name_; }
-    const char* NameCstr() const { return name_.data(); }
 
     //Pack all the files in the folder at inputPath into a packfile at outputPath
     static void Pack(const string& inputPath, const string& outputPath, bool compressed, bool condensed);
@@ -94,12 +79,44 @@ private:
     //Read streams.xml
     static void ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths);
 
-    std::span<u8> buffer_ = {};
+    std::vector<u8> buffer_ = {};
     string path_ = {};
     string name_ = {};
     bool readMetadata_ = false;
-    u8* filenamesBuffer_ = nullptr;
+    std::unique_ptr<char[]> filenamesBuffer_; //Subfile names are all stored in this separated by null terminators
     u64 dataBlockOffset_ = 0;
 
     DataSource packfileSourceType = DataSource::None;
+};
+
+//A file extracted from a packfile and stored in memory. File data is owned by a MemoryFileList.
+class MemoryFile
+{
+public:
+    MemoryFile(const string& filename, size_t offset, size_t size) : Filename(filename), _offset(offset), _size(size) {}
+
+    std::span<u8> GetSpan(u8* parent)
+    {
+        return { parent + _offset, _size };
+    }
+
+    const string Filename;
+
+private:
+    size_t _offset;
+    size_t _size;
+};
+
+//A list of files extracted from a packfile and stored in memory. Owns the files memory and automatically handles deallocation.
+class MemoryFileList
+{
+public:
+    MemoryFileList() {}
+    MemoryFileList(const std::vector<u8>& data, const std::vector<MemoryFile>& files) : _data(data), Files(files) {}
+    u8* Data() { return _data.data(); }
+
+    std::vector<MemoryFile> Files;
+
+private:
+    std::vector<u8> _data;
 };

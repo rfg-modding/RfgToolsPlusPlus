@@ -135,15 +135,15 @@ std::optional<MeshInstanceData> Terrain::ReadTerrainMeshData(BinaryReader& gpuFi
 
 	//Read index buffer
 	gpuFile.SeekBeg(TerrainMesh.IndicesOffset);
-	u32 indexBufferSize = TerrainMesh.NumIndices * TerrainMesh.IndexSize;
-	u8* indexBuffer = new u8[indexBufferSize];
-	gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+	u32 indicesSize = TerrainMesh.NumIndices * TerrainMesh.IndexSize;
+	std::vector<u8> indices(indicesSize);
+	gpuFile.ReadToMemory(indices.data(), indicesSize);
 
 	//Read vertex buffer
 	gpuFile.SeekBeg(TerrainMesh.VertexOffset);
-	u32 vertexBufferSize = TerrainMesh.NumVertices * TerrainMesh.VertexStride0;
-	u8* vertexBuffer = new u8[vertexBufferSize];
-	gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+	u32 verticesSize = TerrainMesh.NumVertices * TerrainMesh.VertexStride0;
+	std::vector<u8> vertices(verticesSize);
+	gpuFile.ReadToMemory(vertices.data(), verticesSize);
 
 	u32 endCRC = gpuFile.ReadUint32();
 	if (startCRC != endCRC)
@@ -153,8 +153,8 @@ std::optional<MeshInstanceData> Terrain::ReadTerrainMeshData(BinaryReader& gpuFi
 	return MeshInstanceData
 	{
 		.Info = TerrainMesh,
-		.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
-		.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+		.VertexBuffer = vertices,
+		.IndexBuffer = indices
 	};
 }
 
@@ -177,15 +177,15 @@ std::optional<MeshInstanceData> Terrain::ReadStitchMeshData(BinaryReader& gpuFil
 
 	//Read index buffer
 	gpuFile.SeekBeg(startPos + StitchMesh.IndicesOffset);
-	u32 indexBufferSize = StitchMesh.NumIndices * StitchMesh.IndexSize;
-	u8* indexBuffer = new u8[indexBufferSize];
-	gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+	u32 indicesSize = StitchMesh.NumIndices * StitchMesh.IndexSize;
+	std::vector<u8> indices(indicesSize);
+	gpuFile.ReadToMemory(indices.data(), indicesSize);
 
 	//Read vertex buffer
 	gpuFile.SeekBeg(startPos + StitchMesh.VertexOffset);
-	u32 vertexBufferSize = StitchMesh.NumVertices * StitchMesh.VertexStride0;
-	u8* vertexBuffer = new u8[vertexBufferSize];
-	gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+	u32 verticesSize = StitchMesh.NumVertices * StitchMesh.VertexStride0;
+	std::vector<u8> vertices(verticesSize);
+	gpuFile.ReadToMemory(vertices.data(), verticesSize);
 
 	u32 endCRC = gpuFile.ReadUint32();
 	if (startCRC != endCRC)
@@ -195,8 +195,8 @@ std::optional<MeshInstanceData> Terrain::ReadStitchMeshData(BinaryReader& gpuFil
 	return MeshInstanceData
 	{
 		.Info = StitchMesh,
-		.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
-		.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+		.VertexBuffer = vertices,
+		.IndexBuffer = indices
 	};
 }
 
@@ -231,15 +231,15 @@ std::optional<std::vector<MeshInstanceData>> Terrain::ReadRoadMeshData(BinaryRea
 
 		//Read index buffer
 		gpuFile.SeekBeg(startPos + mesh.IndicesOffset);
-		u32 indexBufferSize = mesh.NumIndices * mesh.IndexSize;
-		u8* indexBuffer = new u8[indexBufferSize];
-		gpuFile.ReadToMemory(indexBuffer, indexBufferSize);
+		u32 indicesSize = mesh.NumIndices * mesh.IndexSize;
+		std::vector<u8> indices(indicesSize);
+		gpuFile.ReadToMemory(indices.data(), indicesSize);
 
 		//Read vertex buffer
 		gpuFile.SeekBeg(startPos + mesh.VertexOffset);
-		u32 vertexBufferSize = mesh.NumVertices * mesh.VertexStride0;
-		u8* vertexBuffer = new u8[vertexBufferSize];
-		gpuFile.ReadToMemory(vertexBuffer, vertexBufferSize);
+		u32 verticesSize = mesh.NumVertices * mesh.VertexStride0;
+		std::vector<u8> vertices(verticesSize);
+		gpuFile.ReadToMemory(vertices.data(), verticesSize);
 
 		u32 endCRC = gpuFile.ReadUint32();
 		if (startCRC != endCRC)
@@ -248,8 +248,8 @@ std::optional<std::vector<MeshInstanceData>> Terrain::ReadRoadMeshData(BinaryRea
 		out.push_back(MeshInstanceData
 		{
 			.Info = mesh,
-			.VertexBuffer = std::span<u8>(vertexBuffer, vertexBufferSize),
-			.IndexBuffer = std::span<u8>(indexBuffer, indexBufferSize)
+			.VertexBuffer = vertices,
+			.IndexBuffer = indices
 		});
 	}
 
