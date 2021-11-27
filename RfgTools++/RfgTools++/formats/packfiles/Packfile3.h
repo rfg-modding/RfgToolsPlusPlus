@@ -3,6 +3,7 @@
 #include "Packfile3Header.h"
 #include "Packfile3Entry.h"
 #include "RfgTools++/formats/asm/AsmFile5.h"
+#include <filesystem>
 #include <optional>
 #include <vector>
 
