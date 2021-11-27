@@ -1,13 +1,10 @@
 #pragma once
 #include "common/Typedefs.h"
-#include "Common/memory/Span.h"
 #include "Packfile3Header.h"
 #include "Packfile3Entry.h"
 #include "RfgTools++/formats/asm/AsmFile5.h"
-#include <vector>
-#include <span>
 #include <optional>
-#include <filesystem>
+#include <vector>
 
 class BinaryReader;
 class MemoryFile;
@@ -38,7 +35,7 @@ public:
     Packfile3() = delete;
 
     //Read the header, entries, and filenames from packfile
-    void ReadMetadata(BinaryReader* reader = nullptr);
+    void ReadMetadata(Handle<BinaryReader> reader = nullptr);
 
     //Extract subfiles to outputPath
     void ExtractSubfiles(const string& outputPath, bool writeStreamsFile = false);
@@ -53,7 +50,7 @@ public:
     //Parse all asm_pc files in the vpp_pc. This provides a list of all files within the str2_pc files without parsing all of them.
     void ReadAsmFiles();
 
-    bool Contains(s_view subfileName);
+    bool Contains(s_view subfileName, size_t* index = nullptr);
     void SetName(const string& name) { name_ = name; }
     string Name() const { return name_; }
 
@@ -69,15 +66,17 @@ public:
     std::vector<AsmFile5> AsmFiles = {};
 
 private:
-    void FixEntryDataOffsets();
-    u32 GetAlignmentPad(u64 position);
-    bool Contains(s_view subfileName, u32& index);
-    void ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader);
-    void ExtractCompressed(const string& outputPath, BinaryReader& reader);
-    void ExtractDefault(const string& outputPath, BinaryReader& reader);
+    std::vector<u8> ExtractDataDefault(Handle<BinaryReader> reader, size_t entryIndex);
+    std::vector<u8> ExtractDataCompressed(Handle<BinaryReader> reader, size_t entryIndex);
+    //Returns the data for all entries. If provided an index it'll only return data for that entry. Prefer returning all entries and manually splitting for performance.
+    std::vector<u8> ExtractDataCompressedAndCondensed(Handle<BinaryReader> reader, size_t entryIndex = -1);
+
+    //Open stream to read data from packfile (can be in a file or in memory)
+    Handle<BinaryReader> OpenStream();
 
     //Read streams.xml
     static void ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths);
+    void FixEntryDataOffsets();
 
     std::vector<u8> buffer_ = {};
     string path_ = {};

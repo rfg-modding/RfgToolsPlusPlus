@@ -4,9 +4,9 @@
 #include "common/string/String.h"
 #include "compression/Compression.h"
 #include "hashes/Hash.h"
-#include <tinyxml2.h>
 #include <BinaryTools/BinaryReader.h>
 #include <BinaryTools/BinaryWriter.h>
+#include <tinyxml2.h>
 #include <filesystem>
 #include <iostream>
 #include <future>
@@ -25,26 +25,17 @@ Packfile3::Packfile3(std::vector<u8> buffer) : buffer_(buffer), packfileSourceTy
 
 }
 
-void Packfile3::ReadMetadata(BinaryReader* reader)
+void Packfile3::ReadMetadata(Handle<BinaryReader> reader)
 {
-    //Create BinaryReader if one isn't provided
-    bool ownsReader = false;
-    if (reader == nullptr)
-    {
-        ownsReader = true;
-        if (packfileSourceType == DataSource::File)
-            reader = new BinaryReader(path_);
-        else if (packfileSourceType == DataSource::Memory)
-            reader = new BinaryReader(buffer_);
-        else
-            return;
-    }
+    //Open packfile
+    if (!reader)
+        reader = OpenStream();
 
     //Read header directly into memory
     reader->ReadToMemory(&Header, sizeof(Packfile3Header));
     reader->Align(2048); //Align to entries block
 
-    //Basic header validation
+    //Validate signature + version
     if (Header.Signature != 1367935694)
         throw std::exception(("Error! Invalid packfile signature. Expected 1367935694, detected " + std::to_string(Header.Signature)).c_str());
     if (Header.Version != 3)
@@ -85,44 +76,77 @@ void Packfile3::ReadMetadata(BinaryReader* reader)
     dataBlockOffset_ = reader->Position();
     FixEntryDataOffsets();
     readMetadata_ = true;
-    if (ownsReader)
-        delete reader;
 }
 
 void Packfile3::ExtractSubfiles(const string& outputPath, bool writeStreamsFile)
 {
-    //Create reader
-    BinaryReader* reader = nullptr;
-    defer(delete reader);
-    if (packfileSourceType == DataSource::File)
-        reader = new BinaryReader(path_);
-    else if (packfileSourceType == DataSource::Memory)
-        reader = new BinaryReader(buffer_);
-
-    //Read metadata if it hasn't been. Reuse the reader
+    //Open packfile
+    Handle<BinaryReader> reader = OpenStream();
     if (!readMetadata_)
-        ReadMetadata(reader);
-
+        ReadMetadata(reader); //Parse header
     if (reader->Length() <= 2048)
-        return;
+        return; //Packfile is empty
 
-    //Seek to data block
-    reader->SeekBeg(dataBlockOffset_);
-
-    //Ensure output path exists
+    //Ensure output folder exists & seek to data block
     Path::CreatePath(outputPath);
+    reader->SeekBeg(dataBlockOffset_);
 
     //Extract data to files. Pick method based on flags
     if (Compressed && Condensed)
-        ExtractCompressedAndCondensed(outputPath, *reader);
+    {
+        //Extract data
+        std::vector<u8> output = ExtractDataCompressedAndCondensed(reader);
+
+        //Write subfiles to drive
+        for (u32 i = 0; i < Entries.size(); i++)
+        {
+            Packfile3Entry& entry = Entries[i];
+            File::WriteToFile(outputPath + EntryNames[i], { output.data() + entry.DataOffset, entry.DataSize });
+        }
+    }
     else if (Compressed)
-        ExtractCompressed(outputPath, *reader);
+    {
+        //One by one, read subfiles from the packfile, inflate them, and write them to the disk
+        for (u32 i = 0; i < Entries.size(); i++)
+        {
+            std::vector<u8> bytes = ExtractDataCompressed(reader, i);
+            File::WriteToFile(outputPath + EntryNames[i], bytes);
+        }
+    }
     else
-        ExtractDefault(outputPath, *reader);
+    {
+        //Read subfiles from packfile and write them to the disk
+        for (u32 i = 0; i < Entries.size(); i++)
+        {
+            std::vector<u8> bytes = ExtractDataDefault(reader, i);
+            File::WriteToFile(outputPath + EntryNames[i], bytes);
+        }
+    }
 
     //@streams.xml contains files in packfile and their order
     if (writeStreamsFile)
-        WriteStreamsFile(this, outputPath); //Todo: Consider writing this for all packfiles
+        WriteStreamsFile(this, outputPath);
+}
+
+std::optional<std::vector<u8>> Packfile3::ExtractSingleFile(s_view name, bool fullExtractFallback)
+{
+    //Check that it's supported
+    if ((Compressed && Condensed) && !fullExtractFallback)
+        return {};
+
+    //Check that target exists
+    size_t targetIndex = INVALID_HANDLE;
+    if (!Contains(name, &targetIndex)) //This sets targetIndex if it's found
+        return {};
+
+    //Open packfile & read entry
+    Handle<BinaryReader> reader = OpenStream();
+    if (Compressed && Condensed)
+        return ExtractDataCompressedAndCondensed(reader, targetIndex);
+    else if (Compressed)
+        return ExtractDataCompressed(reader, targetIndex);
+    else
+        return ExtractDataDefault(reader, targetIndex);
 }
 
 MemoryFileList Packfile3::ExtractSubfiles(bool writeStreamsFile)
@@ -131,20 +155,9 @@ MemoryFileList Packfile3::ExtractSubfiles(bool writeStreamsFile)
     if(!(Compressed && Condensed))
         return {};
 
-    //Create reader
-    BinaryReader* reader = nullptr;
-    defer(delete reader);
-    if (packfileSourceType == DataSource::File)
-        reader = new BinaryReader(path_);
-    else if (packfileSourceType == DataSource::Memory)
-        reader = new BinaryReader(buffer_);
-
-    //Read all compressed data to buffer and inflate it
-    std::vector<u8> input(Header.CompressedDataSize);
-    std::vector<u8> output(Header.DataSize);
-    reader->SeekBeg(dataBlockOffset_);
-    reader->ReadToMemory(input.data(), Header.CompressedDataSize);
-    Compression::Inflate(input, output);
+    //Open packfile & extract data block
+    Handle<BinaryReader> reader = OpenStream();
+    std::vector<u8> output = ExtractDataCompressedAndCondensed(reader);
 
     //Split output into subfiles
     std::vector<MemoryFile> files = {};
@@ -154,6 +167,7 @@ MemoryFileList Packfile3::ExtractSubfiles(bool writeStreamsFile)
         files.push_back({ EntryNames[i], entry.DataOffset, entry.DataSize });
     }
 
+    //Include @streams.xml
     if (writeStreamsFile)
     {
         //Construct streams file and printer
@@ -172,52 +186,175 @@ MemoryFileList Packfile3::ExtractSubfiles(bool writeStreamsFile)
     return MemoryFileList(output, files);
 }
 
-void Packfile3::ExtractCompressedAndCondensed(const string& outputPath, BinaryReader& reader)
+std::vector<u8> Packfile3::ExtractDataDefault(Handle<BinaryReader> reader, size_t entryIndex)
 {
-    //Read compressed data into a buffer and inflate it
-    std::vector<u8> input(Header.CompressedDataSize);
-    std::vector<u8> output(Header.DataSize);
-    reader.ReadToMemory(input.data(), Header.CompressedDataSize);
+    Packfile3Entry& entry = Entries[entryIndex];
+
+    //Read file into buffer and return it
+    std::vector<u8> entryData(entry.DataSize);
+    reader->SeekBeg(dataBlockOffset_ + entry.DataOffset);
+    reader->ReadToMemory(entryData.data(), entry.DataSize);
+    return entryData;
+}
+
+std::vector<u8> Packfile3::ExtractDataCompressed(Handle<BinaryReader> reader, size_t entryIndex)
+{
+    Packfile3Entry& entry = Entries[entryIndex];
+
+    //Seek to file data. Compressed offset isn't stored so we calculate it by summing previous entries
+    reader->SeekBeg(dataBlockOffset_);
+    for (u32 i = 0; i < entryIndex; i++)
+    {
+        reader->Skip(Entries[i].CompressedDataSize);
+        reader->Align(2048);
+    }
+
+    //Create decompression input/output buffers
+    std::vector<u8> input(entry.CompressedDataSize);
+    std::vector<u8> output(entry.DataSize);
+
+    //Read the files compressed data into buffer and inflate it
+    reader->ReadToMemory(input.data(), entry.CompressedDataSize);
     Compression::Inflate(input, output);
 
-    //Write subfiles to drive
-    for (u32 i = 0; i < Entries.size(); i++)
-    {
-        Packfile3Entry& entry = Entries[i];
-        File::WriteToFile(outputPath + EntryNames[i], { output.data() + entry.DataOffset, entry.DataSize });
-    }
+    return output;
 }
 
-void Packfile3::ExtractCompressed(const string& outputPath, BinaryReader& reader)
+std::vector<u8> Packfile3::ExtractDataCompressedAndCondensed(Handle<BinaryReader> reader, size_t entryIndex)
 {
-    //One by one, read subfiles from the packfile, inflate them, and write them to the disk
-    for (u32 i = 0; i < Entries.size(); i++)
+    //Create decompression input/output buffers
+    std::vector<u8> input(Header.CompressedDataSize);
+    std::vector<u8> output(Header.DataSize);
+
+    //Read all compressed data into buffer and inflate it
+    reader->SeekBeg(dataBlockOffset_);
+    reader->ReadToMemory(input.data(), Header.CompressedDataSize);
+    Compression::Inflate(input, output);
+
+    //Copy data from single file into new vector
+    if (entryIndex == -1)
     {
-        Packfile3Entry& entry = Entries[i];
-
-        //Input/output buffers for decompression
-        std::vector<u8> input(entry.CompressedDataSize);
-        std::vector<u8> output(entry.DataSize);
-
-        //Read file to buffer, decompress it, then save to drive
-        reader.ReadToMemory(input.data(), entry.CompressedDataSize);
-        reader.Align(2048);
-        Compression::Inflate(input, output);
-        File::WriteToFile(outputPath + EntryNames[i], output);
+        //Return all entries data
+        return output;
     }
-}
-
-void Packfile3::ExtractDefault(const string& outputPath, BinaryReader& reader)
-{
-    //Read subfiles from packfile and write them to the disk
-    for (u32 i = 0; i < Entries.size(); i++)
+    else
     {
-        Packfile3Entry& entry = Entries[i];
+        //Return single entries data
+        Packfile3Entry& entry = Entries[entryIndex];
         std::vector<u8> entryData(entry.DataSize);
-        reader.SeekBeg(dataBlockOffset_ + entry.DataOffset);
-        reader.ReadToMemory(entryData.data(), entry.DataSize);
-        File::WriteToFile(outputPath + EntryNames[i], entryData);
+        memcpy(entryData.data(), output.data() + entry.DataOffset, entry.DataSize);
+        return entryData;
     }
+}
+
+Handle<BinaryReader> Packfile3::OpenStream()
+{
+    if (packfileSourceType == DataSource::File)
+        return CreateHandle<BinaryReader>(path_);
+    else if (packfileSourceType == DataSource::Memory)
+        return CreateHandle<BinaryReader>(buffer_);
+    else
+        throw std::runtime_error("Invalid packfile in Packfile3::OpenStream()!");
+}
+
+void Packfile3::ReadAsmFiles()
+{
+    if (!readMetadata_)
+        ReadMetadata();
+
+    //Parse each asm_pc file inside the packfile
+    for (u32 i = 0; i < Entries.size(); i++)
+    {
+        const char* name = EntryNames[i];
+        if (Path::GetExtension(name) != ".asm_pc")
+            continue;
+
+        //Extract the asm_pc file
+        std::optional<std::vector<u8>> data = ExtractSingleFile(name);
+        if (!data.has_value())
+            continue;
+
+        //Parse the asm_pc file
+        AsmFile5& asmFile = AsmFiles.emplace_back();
+        BinaryReader reader(data.value());
+        asmFile.Read(reader, name);
+
+        //Remove containers that don't have a corresponding str2_pc file. Some asm_pc files have these "ghost files". Removing them now means we can assume they exist elsewhere.
+        auto iterator = asmFile.Containers.begin();
+        while (iterator != asmFile.Containers.end())
+        {
+            auto search = std::ranges::find(EntryNames, iterator->Name + ".str2_pc");
+            if (search == EntryNames.end())
+                iterator = asmFile.Containers.erase(iterator); //No str2_pc found with same name, remove container
+            else
+                iterator++; //Next contaner
+        }
+    }
+}
+
+bool Packfile3::Contains(s_view subfileName, size_t* index)
+{
+    for (size_t i = 0; i < Entries.size(); i++)
+    {
+        if (String::EqualIgnoreCase(EntryNames[i], subfileName))
+        {
+            *index = i;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//Fix data offsets. Values in packfile not always valid.
+//Ignores packfiles that are compressed AND condensed since those must be fully extracted and data offsets aren't relevant in that case.
+void Packfile3::FixEntryDataOffsets()
+{
+    if (Compressed && Condensed)
+        return;
+
+    u64 runningDataOffset = 0; //Track relative offset from data section start
+    for (auto& entry : Entries)
+    {
+        //Set entry offset
+        entry.DataOffset = runningDataOffset;
+
+        //Update offset based on entry size and storage type
+        if (Compressed) //Compressed, not condensed
+        {
+            runningDataOffset += entry.CompressedDataSize;
+            runningDataOffset += BinaryWriter::CalcAlign(runningDataOffset, 2048);
+        }
+        else //Not compressed, maybe condensed
+        {
+            runningDataOffset += entry.DataSize;
+            if (!Condensed)
+            {
+                runningDataOffset += BinaryWriter::CalcAlign(runningDataOffset, 2048);
+            }
+        }
+    }
+}
+
+tinyxml2::XMLDocument* GetStreamsFile(Packfile3* packfile)
+{
+    tinyxml2::XMLDocument* doc = new tinyxml2::XMLDocument;
+
+    auto* streamsBlock = doc->NewElement("streams");
+    streamsBlock->SetAttribute("endian", "Little");
+    streamsBlock->SetAttribute("compressed", packfile->Compressed ? "True" : "False");
+    streamsBlock->SetAttribute("condensed", packfile->Condensed ? "True" : "False");
+
+    //Set entries
+    for (u32 i = 0; i < packfile->Entries.size(); i++)
+    {
+        auto* entryElement = streamsBlock->InsertNewChildElement("entry");
+        entryElement->SetAttribute("name", packfile->EntryNames[i]);
+        entryElement->SetText(packfile->EntryNames[i]);
+    }
+
+    doc->InsertFirstChild(streamsBlock);
+    return doc;
 }
 
 void Packfile3::ReadStreamsFile(const string& inputPath, bool& compressed, bool& condensed, std::vector<std::filesystem::directory_entry>& subfilePaths)
@@ -266,113 +403,11 @@ void Packfile3::ReadStreamsFile(const string& inputPath, bool& compressed, bool&
     }
 }
 
-std::optional<std::vector<u8>> Packfile3::ExtractSingleFile(s_view name, bool fullExtractFallback)
+void WriteStreamsFile(Packfile3* packfile, const string& outputPath)
 {
-    //Check if single file extract is supported and the subfile exists
-    u32 targetIndex = INVALID_HANDLE;
-    if (((Compressed && Condensed) && !fullExtractFallback) || !Contains(name, targetIndex))
-        return {};
-
-    //Open packfile for reading
-    BinaryReader* reader = nullptr;
-    defer(delete reader);
-    if (packfileSourceType == DataSource::File)
-        reader = new BinaryReader(path_);
-    else if (packfileSourceType == DataSource::Memory)
-        reader = new BinaryReader(buffer_);
-
-    Packfile3Entry& entry = Entries[targetIndex];
-
-    //C&C files store data in one big compressed block so we must fully decompress it to extract a single file
-    if (Compressed && Condensed)
-    {
-        //Create decompression input/output buffers
-        std::vector<u8> input(Header.CompressedDataSize);
-        std::vector<u8> output(Header.DataSize);
-
-        //Read all compressed data into buffer and inflate it
-        reader->SeekBeg(dataBlockOffset_);
-        reader->ReadToMemory(input.data(), Header.CompressedDataSize);
-        Compression::Inflate(input, output);
-
-        //Copy data from single file into new vector
-        std::vector<u8> entryData(entry.DataSize);
-        memcpy(entryData.data(), output.data() + entry.DataOffset, entry.DataSize);
-        return entryData;
-    }
-    else if (Compressed)
-    {
-        //Seek to file data. Compressed offset isn't stored so we calculate it by summing previous entries
-        reader->SeekBeg(dataBlockOffset_);
-        for (u32 i = 0; i < targetIndex; i++)
-        {
-            reader->Skip(Entries[i].CompressedDataSize);
-            reader->Align(2048);
-        }
-
-        //Create decompression input/output buffers
-        std::vector<u8> input(entry.CompressedDataSize);
-        std::vector<u8> output(entry.DataSize);
-
-        //Read the files compressed data into buffer and inflate it
-        reader->ReadToMemory(input.data(), entry.CompressedDataSize);
-        Compression::Inflate(input, output);
-
-        return output;
-    }
-    else
-    {
-        //Read file into buffer and return it
-        std::vector<u8> entryData(entry.DataSize);
-        reader->SeekBeg(dataBlockOffset_ + entry.DataOffset);
-        reader->ReadToMemory(entryData.data(), entry.DataSize);
-        return entryData;
-    }
-}
-
-bool Packfile3::Contains(s_view subfileName)
-{
-    u32 index = 0;
-    return Contains(subfileName, index);
-}
-
-void Packfile3::ReadAsmFiles()
-{
-    if (!readMetadata_)
-        ReadMetadata();
-
-    //Parse each asm_pc file inside the packfile
-    for (u32 i = 0; i < Entries.size(); i++)
-    {
-        const char* name = EntryNames[i];
-        if (Path::GetExtension(name) != ".asm_pc")
-            continue;
-
-        //Extract the asm_pc file
-        std::optional<std::vector<u8>> data = ExtractSingleFile(name);
-        if (!data.has_value())
-            continue;
-
-        //Parse the asm_pc file
-        AsmFile5& asmFile = AsmFiles.emplace_back();
-        BinaryReader reader(data.value());
-        asmFile.Read(reader, name);
-
-        //Remove containers that don't have a corresponding str2_pc file. For some reason asm_pc files have these "ghost files"
-        auto iterator = asmFile.Containers.begin();
-        while (iterator != asmFile.Containers.end())
-        {
-            bool foundContainer = false;
-            for (auto& entryName : EntryNames)
-                if (iterator->Name + ".str2_pc" == entryName)
-                    foundContainer = true;
-
-            if (!foundContainer)
-                iterator = asmFile.Containers.erase(iterator);
-            else
-                iterator++;
-        }
-    }
+    tinyxml2::XMLDocument* doc = GetStreamsFile(packfile);
+    doc->SaveFile((outputPath + "\\@streams.xml").c_str());
+    delete doc;
 }
 
 void Packfile3::Pack(const string& inputPath, const string& outputPath, bool compressed, bool condensed)
@@ -611,88 +646,4 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
     }
     out.Align(2048);
     out.Flush();
-}
-
-//Fix data offsets. Values in packfile not always valid.
-//Ignores packfiles that are compressed AND condensed since those must be fully extracted and data offsets aren't relevant in that case.
-void Packfile3::FixEntryDataOffsets()
-{
-    if (Compressed && Condensed)
-        return;
-
-    u64 runningDataOffset = 0; //Track relative offset from data section start
-    for(auto& entry : Entries)
-    {
-        //Set entry offset
-        entry.DataOffset = runningDataOffset;
-
-        //Update offset based on entry size and storage type
-        if (Compressed) //Compressed, not condensed
-        {
-            runningDataOffset += entry.CompressedDataSize;
-            long alignmentPad = GetAlignmentPad(runningDataOffset);
-            runningDataOffset += alignmentPad;
-        }
-        else //Not compressed, maybe condensed
-        {
-            runningDataOffset += entry.DataSize;
-            if (!Condensed)
-            {
-                long alignmentPad = GetAlignmentPad(runningDataOffset);
-                runningDataOffset += alignmentPad;
-            }
-        }
-    }
-}
-
-u32 Packfile3::GetAlignmentPad(u64 position)
-{
-    int remainder = (int)(position % 2048U);
-    if (remainder > 0)
-    {
-        return 2048 - remainder;
-    }
-    return 0;
-}
-
-bool Packfile3::Contains(s_view subfileName, u32& index)
-{
-    for (u32 i = 0; i < Entries.size(); i++)
-    {
-        if (String::EqualIgnoreCase(EntryNames[i], subfileName))
-        {
-            index = i;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-tinyxml2::XMLDocument* GetStreamsFile(Packfile3* packfile)
-{
-    tinyxml2::XMLDocument* doc = new tinyxml2::XMLDocument;
-
-    auto* streamsBlock = doc->NewElement("streams");
-    streamsBlock->SetAttribute("endian", "Little");
-    streamsBlock->SetAttribute("compressed", packfile->Compressed ? "True" : "False");
-    streamsBlock->SetAttribute("condensed", packfile->Condensed ? "True" : "False");
-
-    //Set entries
-    for (u32 i = 0; i < packfile->Entries.size(); i++)
-    {
-        auto* entryElement = streamsBlock->InsertNewChildElement("entry");
-        entryElement->SetAttribute("name", packfile->EntryNames[i]);
-        entryElement->SetText(packfile->EntryNames[i]);
-    }
-
-    doc->InsertFirstChild(streamsBlock);
-    return doc;
-}
-
-void WriteStreamsFile(Packfile3* packfile, const string& outputPath)
-{
-    tinyxml2::XMLDocument* doc = GetStreamsFile(packfile);
-    doc->SaveFile((outputPath + "\\@streams.xml").c_str());
-    delete doc;
 }
