@@ -46,7 +46,7 @@ static_assert(sizeof(f32) == 4);
 static_assert(sizeof(f64) == 8);
 
 //Defer statement like zig. Useful since you can put cleanup code next to init code.
-//E.g. buffer will be de-allocated one it goes out of scope:
+//E.g. buffer will be de-allocated once it goes out of scope:
 //    u8* buffer = new u8[4096];
 //    defer(delete[] buffer);
 //Implementation based on these articles:
