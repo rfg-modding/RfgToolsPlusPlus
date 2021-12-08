@@ -4,6 +4,7 @@
 #include "SubmeshData.h"
 #include "RenderBlock.h"
 #include <BinaryTools/BinaryReader.h>
+#include <BinaryTools/BinaryWriter.h>
 #include <vector>
 
 //Structure used across multiple RFG mesh formats that describes vertex and index data layout + format
@@ -40,7 +41,7 @@ public:
     std::vector<SubmeshData> Submeshes = {};
     std::vector<RenderBlock> RenderBlocks = {};
 
-    void Read(BinaryReader& reader)
+    void Read(BinaryReader& reader, bool patchBufferOffsets = false)
     {
         u64 startPos = reader.Position();
 
@@ -48,20 +49,35 @@ public:
         reader.ReadToMemory(this, 48);
         reader.Align(16);
 
-        //Reserve spots for the dynamic objects since we know how many we need ahead of time
-        Submeshes.reserve(NumSubmeshes);
-        RenderBlocks.reserve(NumRenderBlocks);
-
         //Read dynamic data
+        NumRenderBlocks = 0; //Recount since NumRenderBlocks is incorrect in some files
         for (u32 i = 0; i < NumSubmeshes; i++)
         {
             SubmeshData& submesh = Submeshes.emplace_back();
             reader.ReadToMemory(&submesh, sizeof(SubmeshData));
+            NumRenderBlocks += submesh.NumRenderBlocks;
         }
         for (u32 i = 0; i < NumRenderBlocks; i++)
         {
             RenderBlock& renderBlock = RenderBlocks.emplace_back();
             reader.ReadToMemory(&renderBlock, sizeof(RenderBlock));
+        }
+
+        //Todo: Fix this for files like gterrain_pc and gtmesh_pc that have multiple meshes. Seems to need absolute offset to calculate correct align pad. Luckily they have correct offsets by default
+        //Patch vertex and index offset since some files don't have correct values.
+        if (patchBufferOffsets)
+        {
+            IndicesOffset = 16;
+            u32 indicesEnd = IndicesOffset + (NumIndices * IndexSize);
+            VertexOffset = indicesEnd + BinaryWriter::CalcAlign(indicesEnd, 16);
+        }
+
+        //Patch render block offsets for easy access later
+        u32 renderBlockOffset = 0;
+        for (auto& submesh : Submeshes)
+        {
+            submesh.RenderBlocksOffset = renderBlockOffset;
+            renderBlockOffset += submesh.NumRenderBlocks;
         }
 
         u32 endVerificationHash = reader.ReadUint32();
