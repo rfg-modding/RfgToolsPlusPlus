@@ -87,7 +87,6 @@ private:
 int main(int argc, char* argv[])
 {
     //Parse console arguments
-    printf("count: %d, argv[0]: %s\n", argc, argv[0]);
     ConsoleArgs args(argc, argv);
     std::optional<string> cpuFilePath = args.GetArg(0);
     std::optional<string> gpuFilePath = cpuFilePath.has_value() ?
@@ -151,8 +150,12 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    BinaryReader cpuFile(cpuFilePath.value());
-    BinaryReader gpuFile(gpuFilePath.value());
+    std::vector<char> cpuFileBytes = File::ReadAllBytes(cpuFilePath.value());
+    std::vector<char> gpuFileBytes = File::ReadAllBytes(gpuFilePath.value());
+    std::span<u32> cpuFileBytesAsU32List = { (u32*)cpuFileBytes.data(), cpuFileBytes.size() / sizeof(u32) };
+
+    BinaryReader cpuFile(std::span<u8>((u8*)cpuFileBytes.data(), cpuFileBytes.size()));
+    BinaryReader gpuFile(std::span<u8>((u8*)gpuFileBytes.data(), gpuFileBytes.size()));
 
     ChunkHeader header;
     cpuFile.ReadToMemory((void*)&header, sizeof(ChunkHeader));
@@ -259,11 +262,14 @@ int main(int argc, char* argv[])
     cpuFile.Align(128);
 
     u32 numDestroyables = cpuFile.ReadUint32();
-    if (numDestroyables != 1)
-    {
-        printf("Error! '%s' has %d destroyables. Only files with 1 destroyable are supported at the moment!\n", Path::GetFileName(cpuFilePath.value()).c_str(), numDestroyables);
-        return 0;
-    }
+    if (debug)
+        printf("numDestroyables: %d\n", numDestroyables);
+    //TODO: Re-enable if can't fix bugs
+    //if (numDestroyables > 1)
+    //{
+    //    printf("Error! '%s' has %d destroyables. Only files with 0 or 1 destroyable are supported at the moment!\n", Path::GetFileName(cpuFilePath.value()).c_str(), numDestroyables);
+    //    return 0;
+    //}
 
     //Seemingly random data skip that the game does. Maybe empty space in case it's needed eventually
     cpuFile.Skip((numDestroyables * 8) + 4);
@@ -276,13 +282,24 @@ int main(int argc, char* argv[])
     std::vector<destroyable> destroyables;
     for (u32 i = 0; i < numDestroyables; i++)
     {
+        if (debug)
+            printf("Reading destroyable %d\n", i);
+
         //Create new destroyable instance
         auto& destroyable = destroyables.emplace_back();
         size_t destroyableStartPos = cpuFile.Position();
 
         //Read base data and align to next piece of data
+        if (debug)
+            std::cout << "destroyable start pos: " << cpuFile.Position() << "\n";
         cpuFile.ReadToMemory(&destroyable.base, sizeof(destroyable_base));
         cpuFile.Align(128);
+        if (debug)
+        {
+            std::cout << "transform buff offset: " << destroyable.base.transform_buffer_offset << '\n';
+            std::cout << "dlod base offset: " << destroyable.base.base_dlods_offset << '\n';
+            std::cout << "dlods size: " << destroyable.base.num_dlods * sizeof(dlod_base) << "\n";
+        }
 
         //Todo: Could allocate a buffer and read all this data at once then access with a span
         //Read base object data
@@ -320,38 +337,109 @@ int main(int argc, char* argv[])
         cpuFile.Align(4);
 
         //Read rbb nodes
-        destroyable.rbb_nodes.push_back(rfg_rbb_node());
-        rfg_rbb_node* curNode = &destroyable.rbb_nodes.back();
-        curNode->Read(cpuFile);
-        u32 num_objects = curNode->num_objects;
-        while (num_objects > 0)
+        //destroyable.rbb_nodes.push_back(rfg_rbb_node());
+        //rfg_rbb_node* curNode = &destroyable.rbb_nodes.back();
+        //curNode->Read(cpuFile);
+        //u32 num_objects = curNode->num_objects;
+        //while (num_objects > 0)
+        //{
+        //    //Todo: Implement this loop. Not yet added since the test file doesn't use it
+        //    throw std::exception("Support for multiple rbb nodes not yet added!");
+        //}
+        //cpuFile.Align(4);
+
+        ////Read instance data. Seems to be junk in the file and set at runtime. Unless it's offset from the packfile start or something painful like that
+        //if (destroyable.base.inst_data_offset != 0xFFFFFFFF)
+        //{
+        //    cpuFile.ReadToMemory(&destroyable.instance_data, sizeof(destroyable_instance_data));
+        //    //printf("Data size: %d\n", destroyable.instance_data.data_size);
+        //}
+        //static_assert(sizeof(destroyable_instance_data) == 20, "destroyable_instance_data size check failed!");
+
+        ////Seek to end of this destroyable
+        ////cpuFile.SeekBeg(destroyableStartPos + destroyable.instance_data.data_size);
+
+        ////cpuFile.SeekBeg(destroyableStartPos + destroyable.base.transform_buffer_offset);
+
+        ////Todo: There may be some data we have to read/skip here. The code at this point was confusing. Something something aabb instances
+
+        //cpuFile.Align(16);
+        //u32 maybeTransformBufferSize = cpuFile.ReadUint32();
+        //cpuFile.Skip(destroyable.subpieces.size() * 36);
+        //cpuFile.Align(16);
+
+        //Hacky way to find the next destroyable
+        if (i != numDestroyables - 1 && numDestroyables > 1)
         {
-            //Todo: Implement this loop. Not yet added since the test file doesn't use it
-            throw std::exception("Support for multiple rbb nodes not yet added!");
+            if (debug)
+                printf("Doing hacky destroyable search %d\n", i);
+
+            size_t pos = 0;
+            size_t k = cpuFile.Position() / sizeof(u32);
+            const size_t posMax = cpuFile.Length() / sizeof(u32);
+            bool destroyableNotFound = false;
+            while (true)
+            {
+                if (k >= posMax)
+                {
+                    destroyableNotFound = true;
+                    break;
+                }
+
+                //Loop through cpuFile as in memory array of u32s. Much quicker than using BinaryReader, which uses streams under the hood
+                u32 val = cpuFileBytesAsU32List[k];
+                k += 1;
+                size_t posReal = k * sizeof(u32);
+                size_t posU32 = k;
+                if (val == 0xFFFFFFFF)
+                {
+                    //Might've reached destroyable_base.inst_data_offset. Verify by seeing a value then a bunch of null bytes follow
+                    k += 2; //cpuFile.Skip(8);
+                    const size_t nullCheckCount = 7; //Could do more, usually 18 * 4 null bytes
+                    bool notFound = false;
+                    for (size_t l = 0; l < nullCheckCount; l++)
+                    {
+                        u32 val2 = cpuFileBytesAsU32List[k + l]; //cpuFile.ReadUint32();
+                        if (val2 == 0)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            notFound = true;
+                            break;
+                        }
+                    }
+
+                    if (notFound)
+                    {
+                        //Not found, seek back to start of scanned data
+                        //cpuFile.SeekBeg(pos);
+                        k = posU32;
+                        continue;
+                    }
+                    else
+                    {
+                        //Seek to start of destroyable data
+                        posReal -= 36;//40;
+                        if (debug)
+                            printf("Found next destroyable: %zd\n", posReal);
+                        cpuFile.SeekBeg(posReal);
+                        break;
+                    }
+                }
+            }
+
+            if (destroyableNotFound)
+            {
+                printf("Couldn't find next destroyable, i = %d\n", i);
+                break;
+            }
         }
-        cpuFile.Align(4);
-
-        //Read instance data. Seems to be junk in the file and set at runtime. Unless it's offset from the packfile start or something painful like that
-        if (destroyable.base.inst_data_offset != 0xFFFFFFFF)
-        {
-            cpuFile.ReadToMemory(&destroyable.instance_data, sizeof(destroyable_instance_data));
-        }
-        static_assert(sizeof(destroyable_instance_data) == 20, "destroyable_instance_data size check failed!");
-
-        //Seek to end of this destroyable
-        //cpuFile.SeekBeg(destroyableStartPos + destroyable.instance_data.data_size);
-
-        //cpuFile.SeekBeg(destroyableStartPos + destroyable.base.transform_buffer_offset);
-
-        //Todo: There may be some data we have to read/skip here. The code at this point was confusing. Something something aabb instances
-
-        cpuFile.Align(16);
-        u32 maybeTransformBufferSize = cpuFile.ReadUint32();
-        cpuFile.Skip(destroyable.subpieces.size() * 36);
-        cpuFile.Align(16);
     }
 
-
+    if (debug)
+        printf("Extracting vertices...\n");
 
     std::vector<ChunkVertex> vertices;
     std::vector<uint32_t> indices;
@@ -372,6 +460,7 @@ int main(int argc, char* argv[])
     u32 indicesEnd = 16 + (meshData.IndexSize * meshData.NumIndices);
     u32 verticesStart = indicesEnd + BinaryWriter::CalcAlign(indicesEnd, 16); //Todo: Is align needed?
     gpuFile.SeekBeg(verticesStart);
+    //printf("%d\n", meshData.VertFormat);
     for (u32 i = 0; i < meshData.NumVertices; i++)
     {
         ChunkVertex& vert = vertices.emplace_back();
@@ -419,7 +508,7 @@ int main(int argc, char* argv[])
     std::vector<SimpleVertex> vertices2;
     for (auto& vert : vertices)
     {
-        Vec3 normal = { vert.Normal.x / 255.0f, vert.Normal.y / 255.0f, vert.Normal.z / 255.0f };
+        Vec3 normal = { (f32)vert.Normal.x / 255.0f, (f32)vert.Normal.y / 255.0f, (f32)vert.Normal.z / 255.0f };
         normal.x *= 2.0f;
         normal.x -= 1.0f;
         normal.y *= 2.0f;
@@ -433,156 +522,278 @@ int main(int argc, char* argv[])
     tinygltf::Model model;
     tinygltf::Scene scene;
     tinygltf::Asset asset;
-    u32 gltfModel_BufferIndex = 0;
-    u32 gltfModel_BufferViewIndex = 0;
     u32 gltfModel_MeshIndex = 0;
     u32 gltfModel_NodeIndex = 0;
-    u32 gltfModel_AccessorIndex = 0;
 
     asset.version = "2.0";
     asset.generator = "tinygltf";
 
     //Output subpiece meshes
-    for (u32 destroyableIndex = 0; destroyableIndex < destroyables.size(); destroyableIndex++)
+    if (numDestroyables > 0)
     {
-        auto& destroyable = destroyables[destroyableIndex];
-        u32 dlodIndex = 0;
-        for (auto& dlod : destroyable.dlods)
+        for (u32 destroyableIndex = 0; destroyableIndex < destroyables.size(); destroyableIndex++)
         {
-            for (u32 subpieceIndex = dlod.first_piece; subpieceIndex < dlod.first_piece + dlod.max_pieces; subpieceIndex++)
+            auto& destroyable = destroyables[destroyableIndex];
+            u32 dlodIndex = 0;
+            for (auto& dlod : destroyable.dlods)
             {
-                auto& subpiece = destroyable.subpieces[subpieceIndex];
-                auto& subpieceData = destroyable.subpieces_data[subpieceIndex];
-                if (subpieceData.render_subpiece >= meshData.Submeshes.size())
+                for (u32 subpieceIndex = dlod.first_piece; subpieceIndex < dlod.first_piece + dlod.max_pieces; subpieceIndex++)
                 {
-                    printf("Skipping subpiece %d in destroyable %d. render_subpiece > MaxSubmeshIndex.\n", subpieceIndex, destroyableIndex);
-                    continue;
-                }
-
-                u32 submeshIndex = subpieceData.render_subpiece;
-                SubmeshData& submesh = meshData.Submeshes[submeshIndex];
-                for (u32 j = 0; j < submesh.NumRenderBlocks; j++)
-                {
-                    RenderBlock& block = meshData.RenderBlocks[submesh.RenderBlocksOffset + j];
-
-                    //Gltf mesh data
-                    tinygltf::Mesh mesh;
-                    tinygltf::Primitive primitive;
-                    tinygltf::Node node;
-                    tinygltf::Buffer vertexBuffer;
-                    tinygltf::Buffer indexBuffer;
-                    tinygltf::BufferView vertexBufferView;
-                    tinygltf::BufferView indexBufferView;
-                    tinygltf::Accessor positionAccessor;
-                    tinygltf::Accessor Uv0Accessor;
-                    tinygltf::Accessor normalAccessor;
-                    tinygltf::Accessor indexAccessor;
-
-                    //Generate gltf vertex and index buffers for this render block
-                    std::vector<SimpleVertex> gltfVertices;
-                    std::vector<u32> gltfIndices;
-
-                    //Generate simplified vertex buffer that discards all attributes except position. Others aren't need yet
-                    u32 curIndex = 0;
-                    for (u32 k = block.StartIndex; k < block.StartIndex + block.NumIndices; k++)
+                    auto& subpiece = destroyable.subpieces[subpieceIndex];
+                    auto& subpieceData = destroyable.subpieces_data[subpieceIndex];
+                    if (subpieceData.render_subpiece >= meshData.Submeshes.size())
                     {
-                        u32 index = indices[k];
-                        SimpleVertex& vertex = vertices2[index];
+                        printf("Skipping subpiece %d in destroyable %d. render_subpiece > MaxSubmeshIndex.\n", subpieceIndex, destroyableIndex);
+                        continue;
+                    }
 
-                        Vec3 pos = vertex.Pos;
+                    u32 submeshIndex = subpieceData.render_subpiece;
+                    SubmeshData& submesh = meshData.Submeshes[submeshIndex];
+                    for (u32 j = 0; j < submesh.NumRenderBlocks; j++)
+                    {
+                        RenderBlock& block = meshData.RenderBlocks[submesh.RenderBlocksOffset + j];
 
-                        pos = dlod.orient.rotate_point(pos);
+                        //Gltf mesh data
+                        tinygltf::Mesh mesh;
+                        tinygltf::Primitive primitive;
+                        tinygltf::Node node;
+                        tinygltf::Buffer vertexBuffer;
+                        tinygltf::Buffer indexBuffer;
+                        tinygltf::BufferView vertexBufferView;
+                        tinygltf::BufferView indexBufferView;
+                        tinygltf::Accessor positionAccessor;
+                        tinygltf::Accessor Uv0Accessor;
+                        tinygltf::Accessor normalAccessor;
+                        tinygltf::Accessor indexAccessor;
 
-                        pos.x += dlod.pos.x;
-                        pos.y += dlod.pos.y;
-                        pos.z += dlod.pos.z;
+                        //Generate gltf vertex and index buffers for this render block
+                        std::vector<SimpleVertex> gltfVertices;
+                        std::vector<u32> gltfIndices;
 
-                        gltfVertices.push_back(
+                        //Generate simplified vertex buffer that discards all attributes except position. Others aren't need yet
+                        u32 curIndex = 0;
+                        for (u32 k = block.StartIndex; k < block.StartIndex + block.NumIndices; k++)
+                        {
+                            u32 index = indices[k];
+                            SimpleVertex& vertex = vertices2[index];
+
+                            Vec3 pos = vertex.Pos;
+                            pos = dlod.orient.rotate_point(pos);
+                            pos.x += dlod.pos.x;
+                            pos.y += dlod.pos.y;
+                            pos.z += dlod.pos.z;
+
+                            Vec3 normal = vertex.Normal;
+                            normal = dlod.orient.rotate_point(normal).Normalized();
+
+                            gltfVertices.push_back(
+                                {
+                                    .Pos = pos,
+                                    .UV0 = Vec2{vertex.UV0.x / 1024.0f, vertex.UV0.y / 1024.0f},
+                                    .Normal = normal//vertex.Normal.Normalized()
+                                });
+                            gltfIndices.push_back(curIndex++);
+                        }
+
+                        //Setup index buffer + views
+                        const size_t indexBufferIndex = model.buffers.size();
+                        indexBuffer.data = ToByteVector<u32>(gltfIndices);
+                        model.buffers.push_back(indexBuffer);
+
+                        indexBufferView.buffer = model.bufferViews.size();
+                        indexBufferView.byteOffset = 0;
+                        indexBufferView.byteLength = indexBuffer.data.size();
+                        indexBufferView.target = TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER;
+                        model.bufferViews.push_back(indexBufferView);
+
+                        //Index accessors
+                        u32 indexAccessorIndex = model.accessors.size();
+                        indexAccessor.bufferView = indexBufferIndex;
+                        indexAccessor.byteOffset = 0;
+                        indexAccessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
+                        indexAccessor.count = gltfIndices.size();
+                        indexAccessor.type = TINYGLTF_TYPE_SCALAR;
+                        model.accessors.push_back(indexAccessor);
+
+                        //Setup vertex buffer + views
+                        u32 vertexBufferIndex = model.buffers.size();
+                        vertexBuffer.data = ToByteVector<SimpleVertex>(gltfVertices);
+                        model.buffers.push_back(vertexBuffer);
+
+                        u32 vertexBufferViewIndex = model.bufferViews.size();
+                        vertexBufferView.buffer = vertexBufferIndex;
+                        vertexBufferView.byteOffset = 0;
+                        vertexBufferView.byteLength = vertexBuffer.data.size();
+                        vertexBufferView.byteStride = sizeof(SimpleVertex);
+                        vertexBufferView.target = TINYGLTF_TARGET_ARRAY_BUFFER;
+                        model.bufferViews.push_back(vertexBufferView);
+
+                        //Vertex accessors
+                        u32 positionAccessorIndex = model.accessors.size();
+                        positionAccessor.bufferView = vertexBufferViewIndex;
+                        positionAccessor.byteOffset = 0;
+                        positionAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+                        positionAccessor.type = TINYGLTF_TYPE_VEC3;
+                        positionAccessor.count = gltfVertices.size();
+                        model.accessors.push_back(positionAccessor);
+
+                        u32 uv0AccessorIndex = model.accessors.size();
+                        Uv0Accessor.bufferView = vertexBufferViewIndex;
+                        Uv0Accessor.byteOffset = 12;
+                        Uv0Accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+                        Uv0Accessor.type = TINYGLTF_TYPE_VEC2;
+                        Uv0Accessor.count = gltfVertices.size();
+                        model.accessors.push_back(Uv0Accessor);
+
+                        u32 normalAccessorIndex = model.accessors.size();
+                        normalAccessor.bufferView = vertexBufferViewIndex;
+                        normalAccessor.byteOffset = 20;
+                        normalAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+                        normalAccessor.type = TINYGLTF_TYPE_VEC3;
+                        normalAccessor.count = gltfVertices.size();
+                        model.accessors.push_back(normalAccessor);
+
+
+                        //Setup gltf mesh primitive
+                        primitive.indices = indexAccessorIndex;
+                        primitive.attributes["POSITION"] = positionAccessorIndex;
+                        primitive.attributes["TEXCOORD_0"] = uv0AccessorIndex;
+                        primitive.attributes["NORMAL"] = normalAccessorIndex;
+                        primitive.material = 0;
+                        primitive.mode = TINYGLTF_MODE_TRIANGLE_STRIP;
+                        mesh.primitives.push_back(primitive);
+
+                        //Scene node for mesh
+                        node.mesh = gltfModel_MeshIndex++;
+                        scene.nodes.push_back(gltfModel_NodeIndex++);
+
+                        model.meshes.push_back(mesh);
+                        model.nodes.push_back(node);
+                    }
+                }
+                dlodIndex++;
+            }
+        }
+    }
+    else if (numDestroyables == 0)
+    {
+        for (SubmeshData& submesh : meshData.Submeshes)
+        {
+            for (u32 j = 0; j < submesh.NumRenderBlocks; j++)
+            {
+                RenderBlock& block = meshData.RenderBlocks[submesh.RenderBlocksOffset + j];
+
+                //Gltf mesh data
+                tinygltf::Mesh mesh;
+                tinygltf::Primitive primitive;
+                tinygltf::Node node;
+                tinygltf::Buffer vertexBuffer;
+                tinygltf::Buffer indexBuffer;
+                tinygltf::BufferView vertexBufferView;
+                tinygltf::BufferView indexBufferView;
+                tinygltf::Accessor positionAccessor;
+                tinygltf::Accessor Uv0Accessor;
+                tinygltf::Accessor normalAccessor;
+                tinygltf::Accessor indexAccessor;
+
+                //Generate gltf vertex and index buffers for this render block
+                std::vector<SimpleVertex> gltfVertices;
+                std::vector<u32> gltfIndices;
+
+                //Generate simplified vertex buffer that discards all attributes except position. Others aren't need yet
+                u32 curIndex = 0;
+                for (u32 k = block.StartIndex; k < block.StartIndex + block.NumIndices; k++)
+                {
+                    u32 index = indices[k];
+                    SimpleVertex& vertex = vertices2[index];
+
+                    Vec3 pos = vertex.Pos;
+                    Vec3 normal = vertex.Normal;
+
+                    gltfVertices.push_back(
                         {
                             .Pos = pos,
                             .UV0 = Vec2{vertex.UV0.x / 1024.0f, vertex.UV0.y / 1024.0f},
-                            .Normal = vertex.Normal
+                            .Normal = normal//vertex.Normal.Normalized()
                         });
-                        gltfIndices.push_back(curIndex++);
-                    }
-
-                    //Setup vertex buffer + views
-                    vertexBuffer.data = ToByteVector<SimpleVertex>(gltfVertices);
-                    u32 vertexBufferIndex = gltfModel_BufferIndex++;
-
-                    vertexBufferView.buffer = vertexBufferIndex;
-                    vertexBufferView.byteOffset = 0;
-                    vertexBufferView.byteLength = vertexBuffer.data.size();
-                    vertexBufferView.byteStride = sizeof(SimpleVertex);
-                    vertexBufferView.target = TINYGLTF_TARGET_ARRAY_BUFFER;
-
-                    //Vertex accessors
-                    u32 positionAccessorIndex = gltfModel_AccessorIndex++;
-                    positionAccessor.bufferView = vertexBufferIndex;
-                    positionAccessor.byteOffset = 0;
-                    positionAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
-                    positionAccessor.type = TINYGLTF_TYPE_VEC3;
-                    positionAccessor.count = gltfVertices.size();
-
-                    u32 uv0AccessorIndex = gltfModel_AccessorIndex++;
-                    Uv0Accessor.bufferView = vertexBufferIndex;
-                    Uv0Accessor.byteOffset = 12;
-                    Uv0Accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
-                    Uv0Accessor.type = TINYGLTF_TYPE_VEC2;
-                    Uv0Accessor.count = gltfVertices.size();
-
-                    u32 normalAccessorIndex = gltfModel_AccessorIndex++;
-                    normalAccessor.bufferView = vertexBufferIndex;
-                    normalAccessor.byteOffset = 20;
-                    normalAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
-                    normalAccessor.type = TINYGLTF_TYPE_VEC3;
-                    normalAccessor.count = gltfVertices.size();
-
-                    model.buffers.push_back(vertexBuffer);
-                    model.bufferViews.push_back(vertexBufferView);
-                    model.accessors.push_back(positionAccessor);
-                    model.accessors.push_back(Uv0Accessor);
-                    model.accessors.push_back(normalAccessor);
-
-                    //Setup index buffer + views
-                    indexBuffer.data = ToByteVector<u32>(gltfIndices);
-                    u32 indexBufferIndex = gltfModel_BufferIndex++;
-
-                    indexBufferView.buffer = indexBufferIndex;
-                    indexBufferView.byteOffset = 0;
-                    indexBufferView.byteLength = indexBuffer.data.size();
-                    indexBufferView.target = TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER;
-
-                    //Index accessors
-                    u32 indexAccessorIndex = gltfModel_AccessorIndex++;
-                    indexAccessor.bufferView = indexBufferIndex;
-                    indexAccessor.byteOffset = 0;
-                    indexAccessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
-                    indexAccessor.count = gltfIndices.size();
-                    indexAccessor.type = TINYGLTF_TYPE_SCALAR;
-
-                    model.buffers.push_back(indexBuffer);
-                    model.bufferViews.push_back(indexBufferView);
-                    model.accessors.push_back(indexAccessor);
-
-                    //Setup gltf mesh primitive
-                    primitive.indices = indexAccessorIndex;
-                    primitive.attributes["POSITION"] = positionAccessorIndex;
-                    primitive.attributes["TEXCOORD_0"] = uv0AccessorIndex;
-                    primitive.attributes["NORMAL"] = normalAccessorIndex;
-                    primitive.material = 0;
-                    primitive.mode = TINYGLTF_MODE_TRIANGLE_STRIP;
-                    mesh.primitives.push_back(primitive);
-
-                    //Scene node for mesh
-                    node.mesh = gltfModel_MeshIndex++;
-                    scene.nodes.push_back(gltfModel_NodeIndex++);
-
-                    model.meshes.push_back(mesh);
-                    model.nodes.push_back(node);
+                    gltfIndices.push_back(curIndex++);
                 }
+
+                //Setup index buffer + views
+                const size_t indexBufferIndex = model.buffers.size();
+                indexBuffer.data = ToByteVector<u32>(gltfIndices);
+                model.buffers.push_back(indexBuffer);
+
+                indexBufferView.buffer = model.bufferViews.size();
+                indexBufferView.byteOffset = 0;
+                indexBufferView.byteLength = indexBuffer.data.size();
+                indexBufferView.target = TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER;
+                model.bufferViews.push_back(indexBufferView);
+
+                //Index accessors
+                u32 indexAccessorIndex = model.accessors.size();
+                indexAccessor.bufferView = indexBufferIndex;
+                indexAccessor.byteOffset = 0;
+                indexAccessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
+                indexAccessor.count = gltfIndices.size();
+                indexAccessor.type = TINYGLTF_TYPE_SCALAR;
+                model.accessors.push_back(indexAccessor);
+
+                //Setup vertex buffer + views
+                u32 vertexBufferIndex = model.buffers.size();
+                vertexBuffer.data = ToByteVector<SimpleVertex>(gltfVertices);
+                model.buffers.push_back(vertexBuffer);
+
+                u32 vertexBufferViewIndex = model.bufferViews.size();
+                vertexBufferView.buffer = vertexBufferIndex;
+                vertexBufferView.byteOffset = 0;
+                vertexBufferView.byteLength = vertexBuffer.data.size();
+                vertexBufferView.byteStride = sizeof(SimpleVertex);
+                vertexBufferView.target = TINYGLTF_TARGET_ARRAY_BUFFER;
+                model.bufferViews.push_back(vertexBufferView);
+
+                //Vertex accessors
+                u32 positionAccessorIndex = model.accessors.size();
+                positionAccessor.bufferView = vertexBufferViewIndex;
+                positionAccessor.byteOffset = 0;
+                positionAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+                positionAccessor.type = TINYGLTF_TYPE_VEC3;
+                positionAccessor.count = gltfVertices.size();
+                model.accessors.push_back(positionAccessor);
+
+                u32 uv0AccessorIndex = model.accessors.size();
+                Uv0Accessor.bufferView = vertexBufferViewIndex;
+                Uv0Accessor.byteOffset = 12;
+                Uv0Accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+                Uv0Accessor.type = TINYGLTF_TYPE_VEC2;
+                Uv0Accessor.count = gltfVertices.size();
+                model.accessors.push_back(Uv0Accessor);
+
+                u32 normalAccessorIndex = model.accessors.size();
+                normalAccessor.bufferView = vertexBufferViewIndex;
+                normalAccessor.byteOffset = 20;
+                normalAccessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+                normalAccessor.type = TINYGLTF_TYPE_VEC3;
+                normalAccessor.count = gltfVertices.size();
+                model.accessors.push_back(normalAccessor);
+
+
+                //Setup gltf mesh primitive
+                primitive.indices = indexAccessorIndex;
+                primitive.attributes["POSITION"] = positionAccessorIndex;
+                primitive.attributes["TEXCOORD_0"] = uv0AccessorIndex;
+                primitive.attributes["NORMAL"] = normalAccessorIndex;
+                primitive.material = 0;
+                primitive.mode = TINYGLTF_MODE_TRIANGLE_STRIP;
+                mesh.primitives.push_back(primitive);
+
+                //Scene node for mesh
+                node.mesh = gltfModel_MeshIndex++;
+                scene.nodes.push_back(gltfModel_NodeIndex++);
+
+                model.meshes.push_back(mesh);
+                model.nodes.push_back(node);
             }
-            dlodIndex++;
         }
     }
 
