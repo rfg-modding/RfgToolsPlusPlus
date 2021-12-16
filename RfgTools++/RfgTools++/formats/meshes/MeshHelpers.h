@@ -51,9 +51,6 @@ namespace MeshHelpers
     }
 #pragma warning(default:4505)
 
-    //Write binary vertex buffer to a .obj file
-    bool WriteVerticesToObj(std::ofstream& obj, MeshDataBlock& info, std::span<u8> vertexBufferBytes);
-
     //Returns true if the format can be exported by ::WriteToGltf().
     bool IsExportSupported(VertexFormat format);
 
