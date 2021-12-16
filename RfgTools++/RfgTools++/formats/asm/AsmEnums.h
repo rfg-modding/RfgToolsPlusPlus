@@ -110,6 +110,41 @@ enum class PrimitiveType : u8
     NumPrimitiveTypes = 23,
 };
 
+enum class ContainerFlags : u16
+{
+    None = 0,
+    Loaded = 1, //Runtime flag. Set right after the container is loaded
+    Flag1 = 2,
+    Flag2 = 4,
+    Flag3 = 8, //Possibly a runtime only flag that means the container + primitives have been read into memory. Not yet confirmed.
+    Flag4 = 16,
+    Flag5 = 32,
+    ReleaseError = 64, //Runtime flag. Set if stream2_container::req_release fails
+    Flag7 = 128,
+    Passive = 256, //If it's true the container is placed into the passive stream queue. It's unknown what "passive" means in this case.
+    Flag9 = 512,
+    Flag10 = 1024,
+    Flag11 = 2048,
+    Flag12 = 4096,
+    Flag13 = 8192,
+    Flag14 = 16384,
+    Flag15 = 32768,
+};
+
+enum class PrimitiveFlags : u8
+{
+    None = 0,
+    Loaded = 1, //Runtime flag. Set right after the primitive is successfully loaded.
+    Flag1 = 2,
+    Split = 4, //Primitive is split into cpu/gpu files
+    Flag3 = 8,
+    Flag4 = 16,
+    Flag5 = 32,
+    ReleaseError = 64, //Runtime flag. Set if stream2_container::req_release fails
+    Flag7 = 128,
+    Flag8 = 256,
+};
+
 #pragma warning(disable:4505)
 static string to_string(AllocatorType value)
 {

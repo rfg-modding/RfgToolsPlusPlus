@@ -12,7 +12,7 @@ class AsmContainer
 public:
     string Name = {};
     ContainerType Type = ContainerType::None;
-    u16 Flags = 0; //Todo: Determine the bit values of this flag
+    ContainerFlags Flags = ContainerFlags::None;
     u16 PrimitiveCount = 0; //Number of subfiles the str2_pc has
     u32 DataOffset = 0; //Offset to the str2_pc files data block from it's start
     u32 SizeCount = 0;
@@ -32,7 +32,7 @@ public:
         u32 nameLength = reader.ReadUint16();
         Name = reader.ReadFixedLengthString(nameLength);
         Type = (ContainerType)reader.ReadChar();
-        Flags = reader.ReadUint16();
+        Flags = (ContainerFlags)reader.ReadUint16();
         PrimitiveCount = reader.ReadUint16();
         DataOffset = reader.ReadUint32();
         SizeCount = reader.ReadUint32();
@@ -56,7 +56,7 @@ public:
         out.WriteUint16((u16)Name.size());
         out.WriteFixedLengthString(Name); //Doesn't write a null terminator to the file
         out.WriteUint8((u8)Type);
-        out.WriteUint16(Flags);
+        out.WriteUint16((u16)Flags);
         out.WriteUint16(PrimitiveCount);
         out.WriteUint32(DataOffset);
         out.WriteUint32(SizeCount);
