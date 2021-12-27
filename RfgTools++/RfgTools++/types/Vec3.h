@@ -1,7 +1,8 @@
 #pragma once
 #include "common/Typedefs.h"
-#include "Vec2.h"
+#include "common/String.h"
 #include <sstream>
+#include "Vec2.h"
 
 //Todo: Put this in a utility namespace
 //Converts a value to a string with specific precision. Allows control of how many digits are present in the converted string

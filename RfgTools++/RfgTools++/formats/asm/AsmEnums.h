@@ -1,5 +1,6 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "common/String.h"
 #include <stdexcept>
 
 enum class AllocatorType : u8
@@ -142,7 +143,6 @@ enum class PrimitiveFlags : u8
     Flag5 = 32,
     ReleaseError = 64, //Runtime flag. Set if stream2_container::req_release fails
     Flag7 = 128,
-    Flag8 = 256,
 };
 
 #pragma warning(disable:4505)

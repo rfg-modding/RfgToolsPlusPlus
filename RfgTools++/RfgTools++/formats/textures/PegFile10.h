@@ -1,5 +1,6 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "common/String.h"
 #include "PegEntry10.h"
 #include <optional>
 #include <vector>

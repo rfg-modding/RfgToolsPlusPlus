@@ -1,4 +1,5 @@
 #include "common/Typedefs.h"
+#include "common/String.h"
 #include <string>
 #include <vector>
 

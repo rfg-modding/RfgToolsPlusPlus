@@ -1,5 +1,6 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "common/String.h"
 #include <BinaryTools/BinaryReader.h>
 #include <vector>
 
@@ -34,5 +35,4 @@ public:
 
     //Runtime metadata. Not in format
     string Name;
-
 };

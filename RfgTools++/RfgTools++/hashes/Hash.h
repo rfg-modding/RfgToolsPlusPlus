@@ -26,6 +26,7 @@
 
 #pragma once
 #include "common/Typedefs.h"
+#include "common/String.h"
 
 namespace Hash
 {

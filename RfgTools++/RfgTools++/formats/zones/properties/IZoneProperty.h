@@ -1,7 +1,7 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "common/String.h"
 #include <BinaryTools/BinaryReader.h>
-
 
 //Set by each concrete zone property type (implementations of IZoneProperty). Used to identify them to extract data from them.
 //This is likely very error prone so you should check carefully what data type a property is before reading its data directly.

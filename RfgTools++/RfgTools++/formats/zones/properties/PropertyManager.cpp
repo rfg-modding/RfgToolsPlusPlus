@@ -1,5 +1,6 @@
 #include "PropertyManager.h"
 #include "common/Typedefs.h"
+#include "common/String.h"
 #include "types/Vec2.h"
 #include "RfgTools++/formats/zones/properties/IZoneProperty.h"
 #include "RfgTools++/formats/zones/properties/primitive/StringProperty.h"

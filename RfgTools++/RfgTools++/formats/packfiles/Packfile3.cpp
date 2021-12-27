@@ -1,4 +1,6 @@
 #include "Packfile3.h"
+#include "common/Handle.h"
+#include "common/Defer.h"
 #include "common/filesystem/Path.h"
 #include "common/filesystem/File.h"
 #include "common/string/String.h"

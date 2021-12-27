@@ -1,7 +1,8 @@
 #pragma once
 #include "common/Typedefs.h"
-#include <optional>
+#include "common/String.h"
 #include <unordered_map>
+#include <optional>
 #include <mutex>
 
 class HashGuesser

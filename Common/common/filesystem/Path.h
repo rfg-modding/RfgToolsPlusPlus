@@ -1,5 +1,6 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "common/String.h"
 #include <filesystem>
 
 //Todo: Go over each of these functions and try to make them more efficient. Seems to be a lot of unecessary string constructions
