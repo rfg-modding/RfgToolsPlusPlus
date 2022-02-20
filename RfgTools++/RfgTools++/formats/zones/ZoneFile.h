@@ -41,6 +41,8 @@ public:
     ZoneObject* LastObject();
     //Returns true if Header.NumObjects == 0
     bool Empty() { return Header.NumObjects == 0; }
+    //Guess district name from Header.DistrictHash
+    string DistrictName();
 
 private:
     std::unique_ptr<u8[]> _data = nullptr;
@@ -64,7 +66,7 @@ public:
     u16 PropBlockSize = 0; //Size of binary blob of property data
 
     //Attempt to get the classname from ClassnameHash using HashGuesser
-    std::optional<string> Classname();
+    string Classname();
     //Returns the property if the object has it, and nullptr otherwise.
     ZoneObjectProperty* GetProperty(const string& propertyName);
     bool HasProperty(const string& propertyName);

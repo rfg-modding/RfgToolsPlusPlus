@@ -1,6 +1,7 @@
 #include "ZoneFile.h"
 #include "common/filesystem/File.h"
 #include "common/filesystem/Path.h"
+#include "hashes/HashGuesser.h"
 #include <filesystem>
 
 std::optional<ZoneFile> ZoneFile::Read(const std::string& path)
@@ -80,4 +81,13 @@ ZoneObject* ZoneFile::LastObject()
 	}
 
 	return (ZoneObject*)current;
+}
+
+string ZoneFile::DistrictName()
+{
+	std::optional<string> maybeName = HashGuesser::GuessHashOriginString(Header.DistrictHash);
+	if (maybeName)
+		return maybeName.value();
+	else
+		return "Unknown";
 }

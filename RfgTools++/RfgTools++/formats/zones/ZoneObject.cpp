@@ -2,9 +2,13 @@
 #include <BinaryTools/BinaryWriter.h>
 #include "hashes/HashGuesser.h"
 
-std::optional<string> ZoneObject::Classname()
+string ZoneObject::Classname()
 {
-	return HashGuesser::GuessHashOriginString(ClassnameHash);
+	std::optional<string> maybeClassname = HashGuesser::GuessHashOriginString(ClassnameHash);
+	if (maybeClassname)
+		return maybeClassname.value();
+	else
+		return "Unknown";
 }
 
 ZoneObjectProperty* ZoneObject::GetProperty(const string& propertyName)
