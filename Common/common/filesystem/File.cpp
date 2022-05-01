@@ -54,4 +54,10 @@ namespace File
         std::ofstream stream(path, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
         stream.write(reinterpret_cast<const char*>(data.data()), data.size_bytes());
     }
+
+    void WriteTextToFile(const string& path, std::string_view data)
+    {
+        std::ofstream stream(path, std::ofstream::out | std::ofstream::trunc);
+        stream.write(reinterpret_cast<const char*>(data.data()), data.size());
+    }
 }

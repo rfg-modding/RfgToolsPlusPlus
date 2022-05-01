@@ -71,12 +71,14 @@ namespace String
         string str1Lower = String::ToLower(str1);
         return str0Lower == str1Lower;
     }
+
     bool EqualIgnoreCase(s_view str0, s_view str1)
     {
         string str0Lower = String::ToLower(str0);
         string str1Lower = String::ToLower(str1);
         return str0Lower == str1Lower;
     }
+
     size_t FindNthCharacterFromBack(s_view str, char character, u32 n)
     {
         size_t targetPos = 0;
@@ -91,6 +93,27 @@ namespace String
             }
         }
         return targetPos;
+    }
+
+    bool Empty(std::string_view value)
+    {
+        for (const char& c : value)
+            if (c != '\t' && c != ' ')
+                return false;
+
+        return true;
+    }
+
+    std::string_view TrimWhitespace(std::string_view value)
+    {
+        //Trim front
+        while (value.size() > 0 && (value.front() == ' ' || value.front() == '\t'))
+            value.remove_prefix(1);
+        //Trim back
+        while (value.size() > 0 && (value.back() == ' ' || value.back() == '\t'))
+            value.remove_suffix(1);
+
+        return value;
     }
 
 #pragma warning(disable:4996) //Disable warning about <codecvt> being deprecated. Fine for now since MSVC still lets us use it in c++20 and there's no standard replacement.
