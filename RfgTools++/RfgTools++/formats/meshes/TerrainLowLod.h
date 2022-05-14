@@ -1,5 +1,6 @@
 #pragma once
 #include "common/Typedefs.h"
+#include "common/String.h"
 #include "MeshHeaderShared.h"
 #include "TerrainStitchInfo.h"
 #include "TerrainData.h"
@@ -25,7 +26,7 @@ class TerrainLowLod
 {
 public:
     //Read header data from cpu file
-    void Read(BinaryReader& cpuFile, const string& name);
+    void Read(BinaryReader& cpuFile, std::string_view name);
     //Read vertex and index buffers of a mesh (low lod terrain files contain 9). Must call Read to get data from cpu file first
     std::optional<MeshInstanceData> ReadMeshData(BinaryReader& gpuFile, u32 index);
 

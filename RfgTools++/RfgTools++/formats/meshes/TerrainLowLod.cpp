@@ -2,7 +2,7 @@
 
 #define HAVOK_BINARY_TAGFILE_SIGNATURE 1212891981
 
-void TerrainLowLod::Read(BinaryReader& cpuFile, const string& name)
+void TerrainLowLod::Read(BinaryReader& cpuFile, std::string_view name)
 {
 	Name = name;
 
