@@ -1,6 +1,6 @@
 #include "Terrain.h"
 
-void Terrain::Read(BinaryReader& cpuFile, const string& name)
+void Terrain::Read(BinaryReader& cpuFile, std::string_view name)
 {
 	Name = name;
 
