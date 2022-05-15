@@ -12,20 +12,30 @@ void StaticMesh::Read(BinaryReader& cpuFile, const string& name, u32 signature, 
     Header.Read(cpuFile, signature, version);
 
     //Static mesh specific header data
-    NumLods = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-    LodSubmeshIdOffset = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-    MeshTagsOffset = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-
-    MeshTagsNumTags = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-    MeshTagsInternalOffset = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
-
-    CmIndex = cpuFile.ReadUint32();
-    cpuFile.Skip(4);
+    if (Header.Version == 4) //Used by RFG steam edition
+    {
+        NumLods = cpuFile.ReadUint32();
+        LodSubmeshIdOffset = cpuFile.ReadUint32();
+        MeshTagsOffset = cpuFile.ReadUint32();
+        MeshTagsNumTags = cpuFile.ReadUint32();
+        MeshTagsInternalOffset = cpuFile.ReadUint32();
+        CmIndex = cpuFile.ReadUint32();
+    }
+    else if (Header.Version == 5) //Used by RFGR
+    {
+        NumLods = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+        LodSubmeshIdOffset = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+        MeshTagsOffset = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+        MeshTagsNumTags = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+        MeshTagsInternalOffset = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+        CmIndex = cpuFile.ReadUint32();
+        cpuFile.Skip(4);
+    }
 
     //Seek to mesh data offset and read mesh data
     cpuFile.SeekBeg(Header.MeshOffset);
