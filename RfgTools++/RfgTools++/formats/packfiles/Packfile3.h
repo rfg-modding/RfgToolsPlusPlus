@@ -67,6 +67,7 @@ public:
     std::vector<const char*> EntryNames = {};
 
     std::vector<AsmFile5> AsmFiles = {};
+    string Path;
 
 private:
     std::vector<u8> ExtractDataDefault(Handle<BinaryReader> reader, size_t entryIndex);

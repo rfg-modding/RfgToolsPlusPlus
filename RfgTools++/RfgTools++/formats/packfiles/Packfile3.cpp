@@ -19,6 +19,7 @@ void WriteStreamsFile(Packfile3* packfile, const string& outputPath);
 
 Packfile3::Packfile3(const string& path) : path_(path), packfileSourceType(DataSource::File)
 {
+    Path = path_;
     name_ = Path::GetFileName(path_);
 }
 
