@@ -28,7 +28,7 @@ void AsmFile5::Write(BinaryWriter& out)
     //Write header
     out.WriteUint32(Signature);
     out.WriteUint16(Version);
-    out.WriteUint16(ContainerCount);
+    out.WriteUint16((u16)Containers.size());
 
     //Write container data
     for (auto& container : Containers)

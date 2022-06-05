@@ -448,6 +448,8 @@ void Packfile3::Pack(const string& inputPath, const string& outputPath, bool com
     {
         for (auto& subfile : std::filesystem::directory_iterator(inputPath))
         {
+            if (!subfile.is_regular_file()) //Only pack files. Don't attempt to pack folders, symlinks, or anything else.
+                continue;
             if (subfile.path().filename().string() == "@streams.xml")
                 continue;
 
