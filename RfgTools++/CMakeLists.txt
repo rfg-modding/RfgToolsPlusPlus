@@ -38,7 +38,7 @@ file(GLOB_RECURSE SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/trees.h
 
     # Add tinyxml2 files
-    ${CMAKE_SOURCE_DIR}/dependencies/tinyxml2/tinyxml2.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/tinyxml2/tinyxml2.cpp
 )
 
 # Add source to this project's static library (.lib)
@@ -50,7 +50,7 @@ target_include_directories(RfgTools++ SYSTEM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/
     ${CMAKE_CURRENT_SOURCE_DIR}/RfgTools++/
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/zlib/
-    ${CMAKE_SOURCE_DIR}/Dependencies/tinyxml2
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/tinyxml2/
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/BinaryTools/ # TODO: Hook this up as a static lib once it's got a CMakeLists.txt
     ${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/tinygltf/
 )

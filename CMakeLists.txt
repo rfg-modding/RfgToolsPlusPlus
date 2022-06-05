@@ -1,5 +1,7 @@
 ﻿
-set(BUILD_RFGTOOLS_TEST_APP TRUE)
+if(NOT DEFINED BUILD_RFGTOOLS_TEST_APP)
+    set(BUILD_RFGTOOLS_TEST_APP FALSE)
+endif()
 
 # Top level project. Treating this like a VS solution
 cmake_minimum_required (VERSION 3.8)
