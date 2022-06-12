@@ -356,8 +356,8 @@ std::optional<std::vector<u8>> MeshHelpers::ConvertVerticesToGltfFormat(const Me
                     gltfVert.Tangent = { (f32)tangent.x / u8Max, (f32)tangent.y / u8Max, (f32)tangent.z / u8Max, (f32)tangent.w / u8Max };
 
                     //Adjust from [0, 1] to [-1, 1]
-                    gltfVert.Normal -= 0.5f;
-                    gltfVert.Normal *= 2.0f;
+                    gltfVert.Tangent -= 0.5f;
+                    gltfVert.Tangent *= 2.0f;
                 }
             }
             else if (component.Name == "TEXCOORD_0")
