@@ -117,23 +117,16 @@ void TerrainLowLod::Read(BinaryReader& cpuFile, std::string_view name)
 			auto& layer = UndergrowthLayers.emplace_back();
 			layer.Read(cpuFile);
 		}
+
 		size_t numModels = 0;
 		for (auto& layer : UndergrowthLayers)
 			numModels += layer.NumModels;
 
 		cpuFile.Skip(numModels * 16);
-		for (u32 i = 0; i < NumFmeshNames; i++)
+		for (u32 i = 0; i < numModels; i++)
 		{
 			LayerMapMaterialNames2.push_back(cpuFile.ReadNullTerminatedString());
-
-			//Skip extra null terminators that sometimes appear here for some reason
-			if (i < NumFmeshNames - 1)
-			{
-				if (cpuFile.PeekChar() == 0)
-					cpuFile.Skip(1);
-				if (cpuFile.PeekChar() == 0)
-					cpuFile.Skip(1);
-			}
+			cpuFile.Align(4);
 		}
 		cpuFile.Align(4);
 		cpuFile.Skip(16384); //Todo: Determine what this data is
@@ -152,6 +145,7 @@ void TerrainLowLod::Read(BinaryReader& cpuFile, std::string_view name)
 			auto& cell = SingleUndergrowthCellData.emplace_back();
 			cell.Read(cpuFile);
 		}
+
 		size_t numSingleUndergrowths = 0;
 		for (auto& cell : SingleUndergrowthCellData)
 			numSingleUndergrowths += cell.NumSingleUndergrowth;
