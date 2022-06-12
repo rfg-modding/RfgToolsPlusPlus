@@ -123,5 +123,13 @@ namespace String
         std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
         return converter.from_bytes(in);
     }
+
+    std::string ToNarrowString(const std::wstring& in)
+    {
+        //Convert strings from std::wstring to std::string and cache them in the locale class
+        using convert_type = std::codecvt_utf8<wchar_t>;
+        std::wstring_convert<convert_type, wchar_t> converter;
+        return converter.to_bytes(in);
+    }
 #pragma warning(default: 4996)
 }

@@ -23,4 +23,6 @@ namespace String
 
     //Convert std::string to std::wstring
     std::wstring ToWideString(const std::string& in);
+    //Convert std::wstring to std::string
+    std::string ToNarrowString(const std::wstring& in);
 }
