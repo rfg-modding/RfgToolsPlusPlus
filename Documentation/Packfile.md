@@ -21,8 +21,8 @@ This section describes the format version, number of files it contains, data siz
 ```
 u32 Signature
 u32 Version
-char[65] ShortName[65]
-char[256] PathName[256]
+char[65] ShortName
+char[256] PathName
 u8[3] Padding
 u32 Flags
 u8[4] Padding
