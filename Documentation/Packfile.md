@@ -35,41 +35,17 @@ u32 CompressedDataSize
 Align(2048)
 ```
 
-#### Signature
-Signature or "magic number" for this data type. Used as a sanity check. If this doesn't equal 1367935694 the file is probably corrupt..
-
-#### Version
-Should always be 3 for RFG.
-
-#### ShortName
-The game seems to ignore this. It's always null.
-
-#### PathName
-Same as ShortName. Some packers like Gibbeds write a little message in here. Might be a good spot to write packer version info for debugging.
-
-#### Flags
-Bitflags used to specify the data format for entries. Only the first two bits are used by RFG in vanilla files. Haven't checked if setting the other bits breaks anything in the game. The bits are as follows:
-Bit 0 = Compressed
-Bit 1 = Condensed
-See the [Entry data]() section for info on what these do.
-
-#### NumberOfEntries
-The number of files in the packfile.
-
-#### FileSize
-The total size of the packfile in bytes
-
-#### EntryBlockSize
-The size of the entry block in bytes. Doesn't include the padding bytes at the end.
-
-#### NameBlockSize
-The size of the name block in bytes. Doesn't include the padding bytes at the end.
-
-#### DataSize
-The size of the entry data block in bytes. Includes padding between entry data.
-
-#### CompressedDataSize
-Size of the compressed entry data in bytes. Includes padding between entry data.
+* `Signature` - Signature or "magic number" for this data type. Used as a sanity check. If this doesn't equal 1367935694 the file is probably corrupt..
+* `Version` - Should always be 3 for RFG.
+* `ShortName` - The game seems to ignore this. It's always null.
+* `PathName` - Same as ShortName. Some packers like Gibbeds write a little message in here. Might be a good spot to write packer version info for debugging.
+* `Flags` - Bitflags used to specify the data format for entries. Only the first two bits are used by RFG in vanilla files. Haven't checked if setting the other bits breaks anything in the game. Bit 0 = Compressed. Bit 1 = Condensed. See the [Entry data](https://github.com/Moneyl/RfgToolsPlusPlus/blob/master/Documentation/Packfile.md#entry-data) section for info on what these do.
+* `NumberOfEntries` - The number of files in the packfile.
+* `FileSize` - The total size of the packfile in bytes
+* `EntryBlockSize` - The size of the entry block in bytes. Doesn't include the padding bytes at the end.
+* `NameBlockSize` - The size of the name block in bytes. Doesn't include the padding bytes at the end.
+* `DataSize` - The size of the entry data block in bytes. Includes padding between entry data.
+* `CompressedDataSize` - Size of the compressed entry data in bytes. Includes padding between entry data.
 
 
 ## Entries
@@ -84,20 +60,15 @@ u32 CompressedDataSize
 u8[4] Padding
 ```
 
-#### NameOffset
-The byte offset of the entry name relative to the start of the entry names block
+* `NameOffset` - The byte offset of the entry name relative to the start of the entry names block
 
-#### DataOffset
-The byte offset of the entry data relative to the start of the entry data block. When the packfile is compressed *and* condensed this is the offset after decompressing the entire entry data block. This value can be wrong in RFGR since it has packfiles larger than 4GB. If writing a packer/unpacker you should disregard this and recalculate it yourself using the data sizes of each entry.
+* `DataOffset` - The byte offset of the entry data relative to the start of the entry data block. When the packfile is compressed *and* condensed this is the offset after decompressing the entire entry data block. This value can be wrong in RFGR since it has packfiles larger than 4GB. If writing a packer/unpacker you should disregard this and recalculate it yourself using the data sizes of each entry.
 
-#### NameHash
-A CRC32 hash of the entry name.
+* `NameHash` - A CRC32 hash of the entry name.
 
-#### DataSize
-The size of the entry data in bytes. If the file is compressed this is the size after decompression.
+* `DataSize` - The size of the entry data in bytes. If the file is compressed this is the size after decompression.
 
-#### CompressedDataSize
-The size of the entries compressed data. If the packfile isn't compressed this should be `0xFFFFFFFF`.
+* `CompressedDataSize` - The size of the entries compressed data. If the packfile isn't compressed this should be `0xFFFFFFFF`.
 
 This block ends with an `Align(2048)`.
 
@@ -105,7 +76,10 @@ This block ends with an `Align(2048)`.
 This block is a list of null terminated ASCII strings. It ends with `Align(2048)`.
 
 ## Entry data
-This block has the actual data for each entry. The format of the data depends on the header flags. First we'll describe the data layout when neither flag is used (neither compressed nor condensed). The data for each entry is listed in the same order they're found in the entry block. After each entries data is `Align(2048)`. For example, lets say there's a vpp_pc that contains the following files:
+This block has the actual data for each entry. The format of the data depends on the header flags. 
+
+#### Default (no flags)
+First we'll describe the data layout when neither flag is used (neither compressed nor condensed). The data for each entry is listed in the same order they're found in the entry block. After each entries data is `Align(2048)`. For example, lets say there's a vpp_pc that contains the following files:
 - weapons.xtbl
 - characters.xtbl
 - rfg_zonex_format.txt
