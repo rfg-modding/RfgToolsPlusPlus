@@ -21,14 +21,16 @@ std::optional<ZoneFile> ZoneFile::Read(const std::string& path)
 std::optional<ZoneFile> ZoneFile::Read(std::span<u8> bytes, const std::string& name)
 {
 	size_t sizeBytes = bytes.size_bytes();
-	u8* start = bytes.data();
-	u8* end = start + sizeBytes;
 
-	//Take ownership of buffer
+	//Copy bytes to internal buffer
 	ZoneFile zoneFile;
 	zoneFile.Name = name;
 	zoneFile._data = std::make_unique<u8[]>(sizeBytes);
-	memcpy(zoneFile._data.get(), start, sizeBytes);
+	memcpy(zoneFile._data.get(), bytes.data(), sizeBytes);
+
+	//Get start and end position of data
+	u8* start = zoneFile._data.get();
+	u8* end = start + sizeBytes;
 
 	//Read header
 	memcpy(&zoneFile.Header, start, sizeof(ZoneFileHeader));
@@ -38,7 +40,7 @@ std::optional<ZoneFile> ZoneFile::Read(std::span<u8> bytes, const std::string& n
 	zoneFile.HasRelationData = (zoneFile.Header.DistrictFlags & 5) == 0;
 	if (zoneFile.HasRelationData)
 	{
-		zoneFile.RelationData = pos;
+		zoneFile.RelationData = (ZoneFileRelationData*)pos;
 		pos += 87368;
 	}
 	if (zoneFile.Empty())

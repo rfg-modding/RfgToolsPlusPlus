@@ -19,13 +19,25 @@ public:
 };
 static_assert(sizeof(ZoneFileHeader) == 24, "sizeof(ZoneFileHeader) must be 24 to match RFG zone file format.");
 
+struct ZoneFileRelationData
+{
+    u8 Padding0[4];
+    u16 Free;
+    u16 Slot[7280];
+    u16 Next[7280];
+    u8 Padding1[2];
+    u32 Keys[7280];
+    u32 Values[7280];
+};
+static_assert(sizeof(ZoneFileRelationData) == 87368);
+
 //Zone format version 36. Found in rfgzone_pc and layer_pc files in RFG and RFGR.
 class ZoneFile
 {
 public:
     ZoneFileHeader Header;
     bool HasRelationData = false;
-    u8* RelationData = nullptr;
+    ZoneFileRelationData* RelationData = nullptr;
     //Start of the zone object list. You must use NextObject() for iteration since there's variable size property blocks between objects.
     ZoneObject* Objects = nullptr;
     u32 ObjectsSize = 0;
