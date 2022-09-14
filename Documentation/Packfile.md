@@ -98,5 +98,7 @@ When both flags are enabled a unique data layout is used. All the entries are co
 
 ### str2_pc files
 str2_pc files and vpp_pc files are the same exact format with different use cases. Some important things to keep in mind with str2_pc files when writing tools:
-- str2_pc files should always be compressed and condensed
-- When extracting and repacking str2_pc files you should ensure that the entries are in the same order as they were originally. The asm_pc files rely on them being in a certain order. So far tools have solved this by creating a file called @streams.xml in the output folder when unpacking str2_pc files. This contains a list of files in the str2_pc and their order. When repacking they check they look for that file and repack in that order. The main downside of this approach is that it requires users to add new files manually when transferring assets between str2s. In the future we could have other tools that automatically add new files to @streams.xml if we keep that approach.
+1) str2_pc files should always be compressed and condensed
+2) When extracting and repacking str2_pc files you should ensure that the entries are in the same order as they were originally. The asm_pc files rely on them being in a certain order. 
+
+So far tools have solved (2) by creating a file called @streams.xml in the output folder when unpacking str2_pc files. This contains a list of files in the str2_pc and their order. When repacking they look for that file and repack in that order. The main downside of this approach is that it requires users to add new files manually when transferring assets between str2s. In the future we could have other tools that automatically add new files to @streams.xml if we keep that approach.
