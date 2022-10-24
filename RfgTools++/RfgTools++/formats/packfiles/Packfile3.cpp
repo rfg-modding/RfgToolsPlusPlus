@@ -301,7 +301,8 @@ bool Packfile3::Contains(s_view subfileName, size_t* index)
     {
         if (String::EqualIgnoreCase(EntryNames[i], subfileName))
         {
-            *index = i;
+            if (index)
+                *index = i;
             return true;
         }
     }
